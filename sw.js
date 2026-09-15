@@ -1,15 +1,18 @@
-const CACHE = 'robot-attendance-v7';
+const CACHE = 'robot-attendance-v8';
 const ASSETS = [
   './',
   './index.html',
+  './student.html',
   './manifest.json',
   './css/style.css',
   './js/app.js',
   './js/db.js',
+  './js/student.js',
   './js/sync.js',
   './js/ui.js',
   './js/reports.js',
   './js/export.js',
+  './fonts/Roboto-Regular.ttf',    // ← ДОБАВИЛИ ШРИФТ
 ];
 
 // Активация — удаляем старые кэши
