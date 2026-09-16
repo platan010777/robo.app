@@ -63,7 +63,9 @@ userInfo.addEventListener('click', async () => {
 
 function showUser(user) {
   currentUser = user;
-  userInfo.innerHTML = `<span style="cursor:pointer">👤 ${user.email} · выйти</span>`;
+  const name = user.user_metadata?.full_name 
+    || user.email.split('@')[0];
+  userInfo.innerHTML = `<span style="cursor:pointer">👤 ${name} · выйти</span>`;
 }
 
 supabase.auth.getSession().then(({ data }) => {
