@@ -21,6 +21,7 @@ document.querySelectorAll('.tabs button').forEach(btn => {
     if (btn.dataset.tab === 'reports') renderReports();
     if (btn.dataset.tab === 'qrcodes') renderQRCodes();
     if (btn.dataset.tab === 'passes') renderPasses();
+    if (btn.dataset.tab === 'requests') renderRequests();
   });
 });
 
@@ -572,6 +573,104 @@ async function loadAttendance(lessonId) {
   }, '✅ Все присутствуют');
   listBox.appendChild(markAllBtn);
 
+    // --- Блок заявок от учеников ---
+  try {
+    const requests = await db.fetchRequestsForLesson(lessonId);
+    if (requests.length) {
+      const requestsBox = el('div', {
+        style: `background:#fef3c7;border:2px dashed #f59e0b;
+                border-radius:12px;padding:14px;margin-bottom:14px;`,
+      });
+      requestsBox.appendChild(el('div', {
+        style: 'font-weight:bold;color:#92400e;margin-bottom:10px;',
+      }, `📨 Заявки от учеников (${requests.length})`));
+
+      requests.forEach(req => {
+        const student = studentsCache.find(s => s.id === req.student_id);
+        const studentName = student ? student.full_name : 'Неизвестный';
+        const statusInfo = getRequestStatusInfo(req.status);
+
+        const reqRow = el('div', {
+          style: `background:#fff;padding:10px;border-radius:8px;
+                  margin-bottom:8px;display:flex;justify-content:space-between;
+                  align-items:center;gap:8px;flex-wrap:wrap;`,
+        });
+
+        const info = el('div', { style: 'flex:1;' });
+        info.appendChild(el('div', { style: 'font-weight:bold;font-size:0.95rem;' }, studentName));
+        info.appendChild(el('div', {
+          style: `font-size:0.9rem;color:${statusInfo.color};margin-top:2px;`,
+        }, `${statusInfo.emoji} ${statusInfo.label}${req.reason ? ' — ' + req.reason : ''}`));
+        reqRow.appendChild(info);
+
+        if (req.is_approved) {
+          reqRow.appendChild(el('div', {
+            style: 'background:#22c55e;color:#fff;padding:4px 10px;border-radius:999px;font-size:0.8rem;',
+          }, '✅ Подтверждено'));
+        } else {
+          const btnBox = el('div', { style: 'display:flex;gap:6px;' });
+
+          btnBox.appendChild(el('button', {
+            style: 'background:#22c55e;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.85rem;',
+            onclick: async () => {
+              try {
+                await db.approveRequest(req.id, currentUser?.user_metadata?.full_name || currentUser?.email || 'unknown');
+                toast('Подтверждено! ✅', 'ok');
+                await loadAttendance(lessonId);
+              } catch (e) {
+                toast('Ошибка: ' + e.message, 'err');
+              }
+            },
+          }, '✅'));
+
+          btnBox.appendChild(el('button', {
+            style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.85rem;',
+            onclick: async () => {
+              if (!confirm(`Отклонить заявку от ${studentName}?`)) return;
+              try {
+                await db.rejectRequest(req.id);
+                toast('Отклонено', 'ok');
+                await loadAttendance(lessonId);
+              } catch (e) {
+                toast('Ошибка: ' + e.message, 'err');
+              }
+            },
+          }, '❌'));
+
+          reqRow.appendChild(btnBox);
+        }
+
+        requestsBox.appendChild(reqRow);
+      });
+
+      // Кнопка «Подтвердить все»
+      const pendingReqs = requests.filter(r => !r.is_approved);
+      if (pendingReqs.length > 1) {
+        requestsBox.appendChild(el('button', {
+          style: `background:#4f46e5;color:#fff;width:100%;padding:10px;
+                  border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;margin-top:8px;`,
+          onclick: async () => {
+            if (!confirm(`Подтвердить все заявки (${pendingReqs.length})?`)) return;
+            try {
+              for (const r of pendingReqs) {
+                await db.approveRequest(r.id, currentUser?.user_metadata?.full_name || currentUser?.email || 'unknown');
+              }
+              toast('Все заявки подтверждены! ✅', 'ok');
+              await loadAttendance(lessonId);
+            } catch (e) {
+              toast('Ошибка: ' + e.message, 'err');
+            }
+          },
+        }, `✅ Подтвердить все (${pendingReqs.length})`));
+      }
+
+      listBox.appendChild(requestsBox);
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки заявок:', e);
+  }
+
+  // --- Список учеников ---
   const list = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
   students.forEach(s => {
     list.appendChild(renderStudentAttendanceCard(lessonId, s));
@@ -1240,6 +1339,165 @@ async function downloadStudentPass(qrUrl, student, group) {
   }
 }
 
+// ============================================
+// ЗАЯВКИ ОТ УЧЕНИКОВ
+// ============================================
+async function renderRequests() {
+  const root = document.getElementById('tab-requests');
+  root.innerHTML = '';
+
+  root.appendChild(el('p', {
+    style: 'color:#666;margin-bottom:16px;',
+  }, '📨 Заявки от учеников. Подтверди или отклони — данные попадут в журнал.'));
+
+  const listBox = el('div', { id: 'requests-list' });
+  listBox.appendChild(el('p', {}, 'Загружаю...'));
+  root.appendChild(listBox);
+
+  try {
+    const requests = await db.fetchAllRequests();
+    listBox.innerHTML = '';
+
+    if (!requests.length) {
+      listBox.innerHTML = '<p>😕 Пока нет заявок.</p>';
+      return;
+    }
+
+    // Группируем по занятиям
+    const byLesson = {};
+    requests.forEach(r => {
+      if (!byLesson[r.lesson_id]) byLesson[r.lesson_id] = [];
+      byLesson[r.lesson_id].push(r);
+    });
+
+    // Фильтруем занятия
+    const lessonsWithRequests = lessonsCache.filter(l => byLesson[l.id]);
+
+    // Сортируем: ближайшие сверху
+    lessonsWithRequests.sort((a, b) => b.date.localeCompare(a.date));
+
+    lessonsWithRequests.forEach(lesson => {
+      const lessonRequests = byLesson[lesson.id];
+      const group = groupsCache.find(g => g.id === lesson.group_id);
+
+      // Заголовок занятия
+      const lessonHeader = el('div', {
+        style: `background:linear-gradient(90deg,#4f46e5,#9333ea);
+                color:#fff;padding:12px 16px;border-radius:12px;
+                margin:20px 0 12px;`,
+      });
+      lessonHeader.appendChild(el('div', {
+        style: 'font-weight:bold;font-size:1.05rem;',
+      }, `📅 ${lesson.date} · ${group ? group.name : 'без группы'}`));
+      if (lesson.topic) {
+        lessonHeader.appendChild(el('div', {
+          style: 'font-size:0.9rem;opacity:.9;margin-top:4px;',
+        }, `📖 ${lesson.topic}`));
+      }
+      listBox.appendChild(lessonHeader);
+
+      // Заявки
+      lessonRequests.forEach(req => {
+        listBox.appendChild(makeRequestCard(req, lesson, group));
+      });
+    });
+
+  } catch (e) {
+    console.error('Ошибка:', e);
+    listBox.innerHTML = `<p style="color:#ef4444;">Ошибка: ${e.message}</p>`;
+  }
+}
+
+function makeRequestCard(request, lesson, group) {
+  const student = studentsCache.find(s => s.id === request.student_id);
+  const studentName = student ? student.full_name : 'Неизвестный';
+
+  const statusInfo = getRequestStatusInfo(request.status);
+
+  const card = el('div', {
+    style: `background:#fff;padding:14px;border-radius:12px;
+            box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:10px;
+            border-left:5px solid ${statusInfo.color};`,
+  });
+
+  const infoRow = el('div', {
+    style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;',
+  });
+
+  const info = el('div', { style: 'flex:1;min-width:200px;' });
+  info.appendChild(el('div', {
+    style: 'font-weight:bold;font-size:1rem;',
+  }, studentName));
+  info.appendChild(el('div', {
+    style: `font-size:0.95rem;color:${statusInfo.color};margin-top:4px;`,
+  }, `${statusInfo.emoji} ${statusInfo.label}`));
+  if (request.reason) {
+    info.appendChild(el('div', {
+      style: 'font-size:0.85rem;color:#666;margin-top:4px;',
+    }, `💬 ${request.reason}`));
+  }
+
+  const badge = el('div', {
+    style: request.is_approved
+      ? 'background:#22c55e;color:#fff;padding:4px 10px;border-radius:999px;font-size:0.8rem;'
+      : 'background:#f59e0b;color:#fff;padding:4px 10px;border-radius:999px;font-size:0.8rem;',
+  }, request.is_approved ? '✅ Подтверждено' : '⏳ На проверке');
+
+  infoRow.appendChild(info);
+  infoRow.appendChild(badge);
+  card.appendChild(infoRow);
+
+  // Кнопки (если не подтверждено)
+  if (!request.is_approved) {
+    const btnRow = el('div', {
+      style: 'display:flex;gap:8px;margin-top:12px;',
+    });
+
+    btnRow.appendChild(el('button', {
+      style: `background:#22c55e;color:#fff;padding:8px 16px;
+              border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;flex:1;`,
+      onclick: async () => {
+        try {
+          await db.approveRequest(request.id, currentUser?.user_metadata?.full_name || currentUser?.email || 'unknown');
+          toast('Заявка подтверждена! ✅', 'ok');
+          renderRequests();
+        } catch (e) {
+          toast('Ошибка: ' + e.message, 'err');
+        }
+      },
+    }, '✅ Подтвердить'));
+
+    btnRow.appendChild(el('button', {
+      style: `background:#ef4444;color:#fff;padding:8px 16px;
+              border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;flex:1;`,
+      onclick: async () => {
+        if (!confirm(`Отклонить заявку от ${studentName}?`)) return;
+        try {
+          await db.rejectRequest(request.id);
+          toast('Заявка отклонена', 'ok');
+          renderRequests();
+        } catch (e) {
+          toast('Ошибка: ' + e.message, 'err');
+        }
+      },
+    }, '❌ Отклонить'));
+
+    card.appendChild(btnRow);
+  }
+
+  return card;
+}
+
+function getRequestStatusInfo(status) {
+  const map = {
+    present: { label: 'Буду', emoji: '✅', color: '#22c55e' },
+    late: { label: 'Опоздаю', emoji: '⏰', color: '#f59e0b' },
+    absent: { label: 'Не смогу', emoji: '❌', color: '#ef4444' },
+    excused: { label: 'Болею', emoji: '📝', color: '#3b82f6' },
+  };
+  return map[status] || { label: status, emoji: '❓', color: '#666' };
+}
+
 // Экспорт для отладки
 window.__app = { 
   groupsCache, 
@@ -1249,4 +1507,5 @@ window.__app = {
   renderReports,
   renderQRCodes,
   renderPasses,
+  renderRequests,
 };

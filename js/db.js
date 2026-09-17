@@ -251,3 +251,68 @@ export async function fetchStudentsWithTokens() {
   if (error) throw error;
   return data;
 }
+
+// ============================================
+// ЗАЯВКИ НА ПОСЕЩЕНИЕ (для учителя)
+// ============================================
+
+// Все заявки (для вкладки)
+export async function fetchAllRequests() {
+  const { data, error } = await supabase
+    .from('attendance_requests')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+// Заявки по занятию
+export async function fetchRequestsForLesson(lessonId) {
+  const { data, error } = await supabase
+    .from('attendance_requests')
+    .select('*')
+    .eq('lesson_id', lessonId);
+  if (error) throw error;
+  return data;
+}
+
+// Подтвердить заявку
+export async function approveRequest(requestId, teacherName) {
+  const { data: req, error: reqError } = await supabase
+    .from('attendance_requests')
+    .select('*')
+    .eq('id', requestId)
+    .single();
+  if (reqError) throw reqError;
+
+  await supabase
+    .from('attendance')
+    .upsert({
+      lesson_id: req.lesson_id,
+      student_id: req.student_id,
+      status: req.status,
+      comment: req.reason,
+      marked_by: teacherName,
+    }, { onConflict: 'lesson_id,student_id' });
+
+  await supabase
+    .from('attendance_requests')
+    .update({
+      is_approved: true,
+      approved_by: teacherName,
+      approved_at: new Date().toISOString(),
+    })
+    .eq('id', requestId);
+
+  return true;
+}
+
+// Отклонить заявку
+export async function rejectRequest(requestId) {
+  const { error } = await supabase
+    .from('attendance_requests')
+    .delete()
+    .eq('id', requestId);
+  if (error) throw error;
+  return true;
+}

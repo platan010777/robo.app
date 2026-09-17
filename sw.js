@@ -1,4 +1,4 @@
-const CACHE = 'robot-attendance-v12';
+const CACHE = 'robot-attendance-v15';
 const ASSETS = [
   './',
   './index.html',
