@@ -22,6 +22,7 @@ document.querySelectorAll('.tabs button').forEach(btn => {
     if (btn.dataset.tab === 'qrcodes') renderQRCodes();
     if (btn.dataset.tab === 'passes') renderPasses();
     if (btn.dataset.tab === 'requests') renderRequests();
+    if (btn.dataset.tab === 'announcements') renderAnnouncements();
   });
 });
 
@@ -1498,6 +1499,175 @@ function getRequestStatusInfo(status) {
   return map[status] || { label: status, emoji: '❓', color: '#666' };
 }
 
+// ============================================
+// ОБЪЯВЛЕНИЯ
+// ============================================
+async function renderAnnouncements() {
+  const root = document.getElementById('tab-announcements');
+  root.innerHTML = '';
+
+  root.appendChild(el('p', {
+    style: 'color:#666;margin-bottom:16px;',
+  }, '📢 Объявления для учеников. Можно адресовать всем, группе или лично.'));
+
+  // Кнопка «Создать»
+  root.appendChild(el('button', {
+    style: 'background:#22c55e;color:#fff;padding:12px 20px;border:none;border-radius:12px;font-size:1rem;cursor:pointer;margin-bottom:16px;',
+    onclick: () => openAnnouncementForm(),
+  }, '➕ Создать объявление'));
+
+  // Список
+  const listBox = el('div', { id: 'announcements-list' });
+  listBox.appendChild(el('p', {}, 'Загружаю...'));
+  root.appendChild(listBox);
+
+  try {
+    const anns = await db.fetchAnnouncements();
+    listBox.innerHTML = '';
+
+    if (!anns.length) {
+      listBox.innerHTML = '<p>😕 Пока нет объявлений.</p>';
+      return;
+    }
+
+    anns.forEach(a => {
+      listBox.appendChild(makeAnnouncementCard(a));
+    });
+  } catch (e) {
+    console.error('Ошибка:', e);
+    listBox.innerHTML = `<p style="color:#ef4444;">Ошибка: ${e.message}</p>`;
+  }
+}
+
+function makeAnnouncementCard(ann) {
+  let targetLabel = '🌍 Всем';
+  let targetColor = '#4f46e5';
+
+  if (ann.target_type === 'group') {
+    const group = groupsCache.find(g => g.id === ann.target_id);
+    targetLabel = '🏫 ' + (group ? group.name : 'группа');
+    targetColor = '#9333ea';
+  } else if (ann.target_type === 'student') {
+    const student = studentsCache.find(s => s.id === ann.target_id);
+    targetLabel = '👤 ' + (student ? student.full_name : 'ученик');
+    targetColor = '#f59e0b';
+  }
+
+  const card = el('div', {
+    style: `background:#fff;padding:16px;border-radius:12px;
+            box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:12px;
+            border-left:5px solid ${targetColor};`,
+  });
+
+  const header = el('div', {
+    style: 'display:flex;justify-content:space-between;align-items:flex-start;gap:10px;',
+  });
+
+  const info = el('div', { style: 'flex:1;' });
+  info.appendChild(el('div', {
+    style: 'font-weight:bold;font-size:1.1rem;margin-bottom:6px;',
+  }, '📢 ' + ann.title));
+  info.appendChild(el('div', {
+    style: `display:inline-block;background:${targetColor};color:#fff;
+            padding:2px 10px;border-radius:999px;font-size:0.8rem;margin-bottom:8px;`,
+  }, targetLabel));
+  info.appendChild(el('div', {
+    style: 'font-size:0.95rem;color:#1f2937;white-space:pre-wrap;margin-top:6px;',
+  }, ann.text));
+  info.appendChild(el('div', {
+    style: 'font-size:0.8rem;color:#9ca3af;margin-top:10px;',
+  }, `${ann.author || ''} · ${new Date(ann.created_at).toLocaleString('ru-RU')}`));
+
+  header.appendChild(info);
+
+  const delBtn = el('button', {
+    style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.9rem;',
+    onclick: async () => {
+      if (!confirm('Удалить объявление?')) return;
+      await db.deleteAnnouncement(ann.id);
+      renderAnnouncements();
+    },
+  }, '🗑️');
+  header.appendChild(delBtn);
+
+  card.appendChild(header);
+  return card;
+}
+
+function openAnnouncementForm() {
+  const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
+
+  const titleInput = el('input', {
+    placeholder: 'Заголовок *',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
+  });
+
+  const textInput = el('textarea', {
+    placeholder: 'Текст объявления *',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;min-height:100px;',
+  });
+
+  const targetSelect = el('select', {
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
+    onchange: () => updateTargetOptions(targetSelect.value, targetOptions),
+  });
+  targetSelect.appendChild(el('option', { value: 'all' }, '🌍 Всем ученикам'));
+  targetSelect.appendChild(el('option', { value: 'group' }, '🏫 Группе'));
+  targetSelect.appendChild(el('option', { value: 'student' }, '👤 Конкретному ученику'));
+
+  const targetOptions = el('select', {
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;display:none;',
+  });
+
+  form.appendChild(el('label', {}, 'Заголовок *'));
+  form.appendChild(titleInput);
+  form.appendChild(el('label', {}, 'Текст *'));
+  form.appendChild(textInput);
+  form.appendChild(el('label', {}, 'Кому'));
+  form.appendChild(targetSelect);
+  form.appendChild(targetOptions);
+
+  openModal('📢 Новое объявление', form, async () => {
+    if (!titleInput.value.trim()) throw new Error('Введи заголовок');
+    if (!textInput.value.trim()) throw new Error('Введи текст');
+
+    const payload = {
+      title: titleInput.value.trim(),
+      text: textInput.value.trim(),
+      target_type: targetSelect.value,
+      target_id: targetSelect.value !== 'all' ? targetOptions.value || null : null,
+      author: currentUser?.user_metadata?.full_name || currentUser?.email || 'Учитель',
+    };
+
+    if (payload.target_type !== 'all' && !payload.target_id) {
+      throw new Error('Выбери получателя');
+    }
+
+    await db.createAnnouncement(payload);
+    toast('Объявление создано! 📢', 'ok');
+    renderAnnouncements();
+  });
+}
+
+function updateTargetOptions(type, select) {
+  select.innerHTML = '';
+  if (type === 'all') {
+    select.style.display = 'none';
+    return;
+  }
+  select.style.display = 'block';
+
+  if (type === 'group') {
+    groupsCache.forEach(g => {
+      select.appendChild(el('option', { value: g.id }, g.name));
+    });
+  } else if (type === 'student') {
+    studentsCache.filter(s => s.is_active).forEach(s => {
+      select.appendChild(el('option', { value: s.id }, s.full_name));
+    });
+  }
+}
+
 // Экспорт для отладки
 window.__app = { 
   groupsCache, 
@@ -1508,4 +1678,5 @@ window.__app = {
   renderQRCodes,
   renderPasses,
   renderRequests,
+  renderAnnouncements,
 };

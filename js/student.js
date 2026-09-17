@@ -98,21 +98,28 @@ async function loadByToken() {
 
         const student = studentData[0];
 
-    // Показываем приветствие с ФИО
+    // 1. Показываем приветствие с ФИО
     groupInfo.innerHTML = `
       <div class="group-badge">👤 ${student.full_name}</div>
       ${student.group_name ? `<div style="font-size:0.95rem;color:#666;margin-top:8px;">🏫 ${student.group_name}</div>` : ''}
     `;
 
-    // Загружаем статистику посещаемости
+    // 2. Загружаем статистику посещаемости
     const stats = await loadMyAttendance(student.student_id);
     if (stats) {
       renderMyStats(stats);
     }
-        // Загружаем заявки ученика
+
+    // 3. Загружаем заявки ученика
     await loadMyRequests();
 
-    // Загружаем занятия группы
+    // 4. Загружаем объявления ← ВСТАВИТ В ШАПКУ
+    await loadMyAnnouncements();
+
+    // 5. Загружаем комментарии
+    await loadMyComments();
+
+     // 6. Загружаем занятия группы
     const { data: lessons, error: lessonsError } = await supabase
       .from('lessons')
       .select('id, date, topic, teacher_name')
@@ -152,6 +159,213 @@ async function loadMyRequests() {
   } catch (e) {
     console.error('Ошибка загрузки заявок:', e);
   }
+}
+
+async function loadMyAnnouncements() {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_my_announcements', { p_token: studentToken });
+    if (error) throw error;
+    if (data && data.length) {
+      renderAnnouncementsBox(data);
+    }
+  } catch (e) {
+    console.error('Ошибка объявлений:', e);
+  }
+}
+
+async function loadMyComments() {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_my_comments', { p_token: studentToken });
+    if (error) throw error;
+    if (data && data.length) {
+      renderCommentsBox(data);
+    }
+  } catch (e) {
+    console.error('Ошибка комментариев:', e);
+  }
+}
+
+function renderAnnouncementsBox(anns) {
+  // Находим место под шапкой (после groupInfo)
+  const groupInfoEl = document.getElementById('group-info');
+  if (!groupInfoEl) return;
+
+  // Удаляем старый блок, если есть
+  const old = document.getElementById('announcements-header');
+  if (old) old.remove();
+
+  const box = document.createElement('div');
+  box.id = 'announcements-header';
+  box.style.cssText = `
+    margin: 16px 0;
+    animation: slideDown .5s ease-out;
+  `;
+
+  // Стили анимации — добавляем в head один раз
+  if (!document.getElementById('ann-styles')) {
+    const style = document.createElement('style');
+    style.id = 'ann-styles';
+    style.textContent = `
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-15px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4); }
+        50% { box-shadow: 0 4px 30px rgba(245, 158, 11, 0.8); }
+      }
+      @keyframes wiggle {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-15deg); }
+        75% { transform: rotate(15deg); }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      .ann-card {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%);
+        background-size: 200% 200%;
+        border-radius: 16px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        border-left: 6px solid #f59e0b;
+        animation: pulseGlow 2s ease-in-out infinite;
+        position: relative;
+        overflow: hidden;
+      }
+      .ann-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+        animation: shine 3s infinite;
+      }
+      @keyframes shine {
+        0% { left: -100%; }
+        50%, 100% { left: 100%; }
+      }
+      .ann-emoji {
+        display: inline-block;
+        animation: wiggle 1s ease-in-out infinite;
+        margin-right: 6px;
+      }
+      .ann-title {
+        font-weight: bold;
+        font-size: 1.1rem;
+        color: #92400e;
+        margin-bottom: 8px;
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+      }
+      .ann-text {
+        font-size: 1rem;
+        color: #1f2937;
+        white-space: pre-wrap;
+        position: relative;
+        z-index: 2;
+        line-height: 1.5;
+      }
+      .ann-footer {
+        font-size: 0.75rem;
+        color: #92400e;
+        opacity: 0.7;
+        margin-top: 10px;
+        position: relative;
+        z-index: 2;
+      }
+      .ann-new-badge {
+        background: #ef4444;
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        margin-left: 8px;
+        animation: blink 1.2s ease-in-out infinite;
+      }
+      .ann-header-title {
+        font-size: 1rem;
+        font-weight: bold;
+        color: #4f46e5;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Заголовок блока
+  const header = document.createElement('div');
+  header.className = 'ann-header-title';
+  header.innerHTML = `<span class="ann-emoji">📢</span> Объявления`;
+  box.appendChild(header);
+
+  // Карточки объявлений
+  anns.forEach((a, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ann-card';
+    // Первое объявление — с бейджем "NEW"
+    const newBadge = idx === 0 ? '<span class="ann-new-badge">NEW</span>' : '';
+
+    card.innerHTML = `
+      <div class="ann-title">
+        <span class="ann-emoji">📢</span>
+        ${a.title}${newBadge}
+      </div>
+      <div class="ann-text">${a.text}</div>
+      <div class="ann-footer">
+        ${a.author || ''} · ${new Date(a.created_at).toLocaleDateString('ru-RU')}
+      </div>
+    `;
+    box.appendChild(card);
+  });
+
+  // Вставляем СРАЗУ ПОСЛЕ group-info (в шапке)
+  groupInfoEl.parentNode.insertBefore(box, groupInfoEl.nextSibling);
+}
+
+function renderCommentsBox(comments) {
+  const lessonsListEl = document.getElementById('lessons-list');
+  if (!lessonsListEl) return;
+
+  const box = document.createElement('div');
+  box.style.cssText = 'margin-bottom:20px;';
+
+  box.innerHTML = `
+    <div style="font-size:1.1rem;font-weight:bold;color:#4f46e5;margin-bottom:12px;">
+      💬 Комментарии учителя
+    </div>
+  `;
+
+  comments.forEach(c => {
+    const card = document.createElement('div');
+    card.style.cssText = `
+      background: #eef2ff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border-left: 4px solid #4f46e5;
+    `;
+    card.innerHTML = `
+      <div style="font-size:0.95rem;color:#1f2937;white-space:pre-wrap;">
+        ${c.text}
+      </div>
+      <div style="font-size:0.75rem;color:#9ca3af;margin-top:6px;">
+        👨‍🏫 ${c.teacher_name || 'Учитель'} · ${new Date(c.created_at).toLocaleDateString('ru-RU')}
+      </div>
+    `;
+    box.appendChild(card);
+  });
+
+  lessonsListEl.parentNode.insertBefore(box, lessonsListEl);
 }
 
 // Функция отправки заявки

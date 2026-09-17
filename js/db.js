@@ -316,3 +316,95 @@ export async function rejectRequest(requestId) {
   if (error) throw error;
   return true;
 }
+
+// ============================================
+// ОБЪЯВЛЕНИЯ
+// ============================================
+export async function fetchAnnouncements() {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function createAnnouncement(ann) {
+  const { data, error } = await supabase
+    .from('announcements')
+    .insert(ann)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAnnouncement(id) {
+  const { error } = await supabase
+    .from('announcements')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ============================================
+// ДОМАШКА
+// ============================================
+export async function fetchHomeworkForLesson(lessonId) {
+  const { data, error } = await supabase
+    .from('homework')
+    .select('*')
+    .eq('lesson_id', lessonId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function createHomework(hw) {
+  const { data, error } = await supabase
+    .from('homework')
+    .insert(hw)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteHomework(id) {
+  const { error } = await supabase
+    .from('homework')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ============================================
+// КОММЕНТАРИИ
+// ============================================
+export async function fetchCommentsForStudent(studentId) {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function createComment(comment) {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert(comment)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteComment(id) {
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
