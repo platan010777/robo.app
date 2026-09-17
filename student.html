@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>📖 Занятия — КЛАСС РОБОТОТЕХНИКИ</title>
+  <link rel="icon" href="icons/icon-192.png" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Comic Sans MS', 'Segoe UI', system-ui, sans-serif;
+      background: #fef9c3;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: linear-gradient(90deg, #4f46e5, #9333ea);
+      color: #fff;
+      padding: 16px 20px;
+      border-radius: 0 0 20px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    }
+
+    .topbar h1 {
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    .group-badge {
+      display: inline-block;
+      background: linear-gradient(90deg, #4f46e5, #9333ea);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(79,70,229,.3);
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #4f46e5;
+      margin: 24px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lesson-card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      margin-bottom: 12px;
+      border-left: 5px solid #4f46e5;
+      transition: transform .15s;
+    }
+
+    .lesson-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .lesson-card.past {
+      opacity: 0.7;
+      border-left-color: #9ca3af;
+    }
+
+    .lesson-card.today {
+      border-left-color: #22c55e;
+      background: #f0fdf4;
+    }
+
+    .lesson-date {
+      color: #4f46e5;
+      font-weight: bold;
+      font-size: 1rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lesson-card.past .lesson-date {
+      color: #6b7280;
+    }
+
+    .lesson-card.today .lesson-date {
+      color: #16a34a;
+    }
+
+    .lesson-topic {
+      font-size: 1.1rem;
+      color: #1f2937;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .lesson-teacher {
+      font-size: 0.9rem;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .today-badge {
+      display: inline-block;
+      background: #22c55e;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 8px;
+    }
+
+    .loading, .empty-state, .error-state {
+      text-align: center;
+      padding: 50px 20px;
+      font-size: 1.1rem;
+      color: #6b7280;
+    }
+
+    .loading {
+      color: #4f46e5;
+    }
+
+    .error-state {
+      color: #ef4444;
+    }
+
+    .robot-emoji {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #9ca3af;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>🤖 КЛАСС РОБОТОТЕХНИКИ</h1>
+  </header>
+
+  <main>
+    <div id="group-info"></div>
+    <div id="lessons-list">
+      <div class="loading">
+        <span class="robot-emoji">🤖</span>
+        Загружаю занятия...
+      </div>
+    </div>
+  </main>
+
+  <div class="footer">
+    Сделано с ❤️ для юных робототехников
+  </div>
+
+  <script type="module" src="js/student.js"></script>
+</body>
+</html>
