@@ -844,4 +844,12 @@ async function buildReport(dateFrom, dateTo, groupId) {
 // ============================================
 // ЭКСПОРТ ДЛЯ ОТЛАДКИ
 // ============================================
-window.__app = { groupsCache, studentsCache, lessonsCache, renderJournal, renderReports };
+window.__app = { 
+  groupsCache, 
+  studentsCache, 
+  lessonsCache, 
+  renderJournal, 
+  renderReports,
+  renderQRCodes,
+  renderPasses,
+};
