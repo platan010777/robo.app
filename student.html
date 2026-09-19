@@ -156,8 +156,35 @@
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <h1>🤖 КЛАСС РОБОТОТЕХНИКИ</h1>
+    <header class="topbar" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+    <h1 style="font-size:1.1rem;display:flex;align-items:center;gap:8px;">🤖 КЛАСС РОБОТОТЕХНИКИ</h1>
+    <button id="chat-btn" style="
+      background:rgba(255,255,255,.2);
+      color:#fff;
+      border:none;
+      padding:8px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:0.95rem;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      position:relative;
+      transition:background .15s;
+    " onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">
+      💬 Чат
+      <span id="chat-badge" style="
+        display:none;
+        background:#ef4444;
+        color:#fff;
+        border-radius:999px;
+        padding:1px 7px;
+        font-size:0.75rem;
+        font-weight:bold;
+        min-width:18px;
+        text-align:center;
+      ">0</span>
+    </button>
   </header>
 
   <main>
@@ -172,6 +199,121 @@
 
   <div class="footer">
     Сделано с ❤️ для юных робототехников
+  </div>
+
+  <!-- Модальное окно чата -->
+  <div id="chat-modal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.6);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  ">
+    <div style="
+      background:#fff;
+      border-radius:20px;
+      width:100%;
+      max-width:600px;
+      height:90vh;
+      max-height:700px;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,.4);
+    ">
+      <!-- Шапка чата -->
+      <div style="
+        background:linear-gradient(90deg,#4f46e5,#9333ea);
+        color:#fff;
+        padding:16px 20px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+      ">
+        <div style="font-weight:bold;font-size:1.1rem;">💬 Чат</div>
+        <button id="chat-close" style="
+          background:rgba(255,255,255,.2);
+          color:#fff;
+          border:none;
+          width:32px;height:32px;
+          border-radius:50%;
+          cursor:pointer;
+          font-size:1.2rem;
+          line-height:1;
+        ">✕</button>
+      </div>
+
+      <!-- Вкладки чата -->
+      <div style="display:flex;background:#f3f4f6;border-bottom:2px solid #e5e7eb;">
+        <button id="chat-tab-group" class="chat-tab active" style="
+          flex:1;
+          padding:12px;
+          border:none;
+          background:transparent;
+          cursor:pointer;
+          font-size:0.95rem;
+          font-weight:bold;
+          color:#4f46e5;
+          border-bottom:3px solid #4f46e5;
+        ">🏫 Моя группа</button>
+        <button id="chat-tab-global" class="chat-tab" style="
+          flex:1;
+          padding:12px;
+          border:none;
+          background:transparent;
+          cursor:pointer;
+          font-size:0.95rem;
+          color:#6b7280;
+          border-bottom:3px solid transparent;
+        ">🌍 Общий</button>
+      </div>
+
+      <!-- Список сообщений -->
+      <div id="chat-messages" style="
+        flex:1;
+        overflow-y:auto;
+        padding:16px;
+        background:#f9fafb;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      "></div>
+
+      <!-- Форма отправки -->
+      <div style="
+        padding:12px;
+        background:#fff;
+        border-top:2px solid #e5e7eb;
+        display:flex;
+        gap:8px;
+        align-items:flex-end;
+      ">
+        <textarea id="chat-input" placeholder="Написать сообщение..." rows="1" style="
+          flex:1;
+          padding:10px 14px;
+          border:2px solid #e5e7eb;
+          border-radius:14px;
+          resize:none;
+          font-family:inherit;
+          font-size:0.95rem;
+          max-height:120px;
+          outline:none;
+        "></textarea>
+        <button id="chat-send" style="
+          background:#4f46e5;
+          color:#fff;
+          border:none;
+          width:44px;height:44px;
+          border-radius:50%;
+          cursor:pointer;
+          font-size:1.2rem;
+          flex-shrink:0;
+        ">📤</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="js/student.js"></script>

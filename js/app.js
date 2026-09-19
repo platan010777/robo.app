@@ -23,6 +23,8 @@ document.querySelectorAll('.tabs button').forEach(btn => {
     if (btn.dataset.tab === 'passes') renderPasses();
     if (btn.dataset.tab === 'requests') renderRequests();
     if (btn.dataset.tab === 'announcements') renderAnnouncements();
+    if (btn.dataset.tab === 'chats') renderChats();
+    if (btn.dataset.tab === 'homework') renderHomework();
   });
 });
 
@@ -1668,6 +1670,605 @@ function updateTargetOptions(type, select) {
   }
 }
 
+// ============================================
+// ЧАТЫ (для учителя)
+// ============================================
+let chatRooms = {};           // { roomKey: { name, type, id, unread } }
+let currentChatRoom = null;   // 'global' или 'group:UUID'
+let chatChannel = null;       // Realtime-канал
+
+async function renderChats() {
+  const root = document.getElementById('tab-chats');
+  root.innerHTML = '';
+
+  root.appendChild(el('p', {
+    style: 'color:#666;margin-bottom:16px;',
+  }, '💬 Чаты с учениками. Выбери комнату слева — читай и отвечай.'));
+
+  // Собираем список комнат
+  chatRooms = {};
+
+  // Общий чат
+  chatRooms['global'] = {
+    key: 'global',
+    name: '🌍 Общий чат',
+    type: 'global',
+    id: null,
+  };
+
+  // Чаты групп
+  groupsCache.forEach(g => {
+    const key = 'group:' + g.id;
+    chatRooms[key] = {
+      key: key,
+      name: '🏫 ' + g.name,
+      type: 'group',
+      id: g.id,
+    };
+  });
+
+  // Подсчёт непрочитанных
+  for (const key in chatRooms) {
+    try {
+      const unread = await db.getTeacherUnreadCount(key);
+      chatRooms[key].unread = unread;
+    } catch (e) {
+      chatRooms[key].unread = 0;
+    }
+  }
+
+  // Двухколоночный layout
+  const layout = el('div', {
+    style: 'display:grid;grid-template-columns:280px 1fr;gap:16px;min-height:600px;',
+  });
+
+  // Левая колонка — список
+  const sidebar = el('div', {
+    style: 'background:#fff;border-radius:12px;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow-y:auto;max-height:700px;',
+  });
+  sidebar.appendChild(el('div', {
+    style: 'font-weight:bold;color:#4f46e5;padding:8px;font-size:0.95rem;',
+  }, 'Комнаты'));
+
+  Object.values(chatRooms).forEach(room => {
+    sidebar.appendChild(makeRoomListItem(room));
+  });
+
+  // Правая колонка — чат
+  const chatPanel = el('div', {
+    id: 'teacher-chat-panel',
+    style: 'background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;min-height:600px;max-height:700px;',
+  });
+  chatPanel.appendChild(el('div', {
+    style: 'padding:40px;text-align:center;color:#9ca3af;font-size:1rem;',
+  }, '👈 Выбери комнату слева'));
+
+  layout.appendChild(sidebar);
+  layout.appendChild(chatPanel);
+  root.appendChild(layout);
+}
+
+function makeRoomListItem(room) {
+  const item = el('div', {
+    style: `padding:10px 12px;border-radius:10px;cursor:pointer;
+            margin-bottom:4px;display:flex;justify-content:space-between;
+            align-items:center;gap:8px;transition:background .15s;
+            ${currentChatRoom === room.key ? 'background:#eef2ff;' : ''}`,
+    onclick: () => openTeacherRoom(room.key),
+    onmouseover: function() { if (currentChatRoom !== room.key) this.style.background = '#f3f4f6'; },
+    onmouseout: function() { if (currentChatRoom !== room.key) this.style.background = ''; },
+  });
+
+  const name = el('div', {
+    style: 'font-size:0.95rem;flex:1;',
+  }, room.name);
+
+  item.appendChild(name);
+
+  if (room.unread > 0) {
+    item.appendChild(el('span', {
+      style: `background:#ef4444;color:#fff;border-radius:999px;
+              padding:2px 8px;font-size:0.75rem;font-weight:bold;`,
+    }, String(room.unread)));
+  }
+
+  return item;
+}
+
+async function openTeacherRoom(roomKey) {
+  currentChatRoom = roomKey;
+  const room = chatRooms[roomKey];
+
+  // Обновляем подсветку в списке
+  document.querySelectorAll('#tab-chats [onclick]').forEach(el => {
+    el.style.background = '';
+  });
+  // Проще — перерисовать список
+  const root = document.getElementById('tab-chats');
+  const sidebar = root.querySelector('div[style*="grid-template-columns"] > div');
+  if (sidebar) {
+    const newSidebar = sidebar.cloneNode(false);
+    newSidebar.appendChild(el('div', {
+      style: 'font-weight:bold;color:#4f46e5;padding:8px;font-size:0.95rem;',
+    }, 'Комнаты'));
+    Object.values(chatRooms).forEach(r => {
+      newSidebar.appendChild(makeRoomListItem(r));
+    });
+    sidebar.parentNode.replaceChild(newSidebar, sidebar);
+  }
+
+  // Рендерим панель чата
+  const panel = document.getElementById('teacher-chat-panel');
+  panel.innerHTML = '';
+
+  // Шапка
+  const header = el('div', {
+    style: `background:linear-gradient(90deg,#4f46e5,#9333ea);color:#fff;
+            padding:14px 18px;border-radius:12px 12px 0 0;
+            display:flex;justify-content:space-between;align-items:center;`,
+  });
+  header.appendChild(el('div', { style: 'font-weight:bold;' }, room.name));
+  panel.appendChild(header);
+
+  // Сообщения
+  const messagesBox = el('div', {
+    id: 'teacher-messages',
+    style: 'flex:1;overflow-y:auto;padding:16px;background:#f9fafb;display:flex;flex-direction:column;gap:10px;',
+  });
+  messagesBox.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Загружаю...</div>';
+  panel.appendChild(messagesBox);
+
+  // Форма
+  const form = el('div', {
+    style: 'padding:12px;background:#fff;border-top:2px solid #e5e7eb;display:flex;gap:8px;border-radius:0 0 12px 12px;',
+  });
+  const input = el('textarea', {
+    id: 'teacher-chat-input',
+    placeholder: 'Написать сообщение...',
+    rows: '1',
+    style: `flex:1;padding:10px 14px;border:2px solid #e5e7eb;
+            border-radius:14px;resize:none;font-family:inherit;
+            font-size:0.95rem;max-height:120px;outline:none;`,
+  });
+  const sendBtn = el('button', {
+    style: `background:#4f46e5;color:#fff;border:none;width:44px;height:44px;
+            border-radius:50%;cursor:pointer;font-size:1.2rem;flex-shrink:0;`,
+    onclick: () => sendTeacherMsg(),
+  }, '📤');
+
+  form.appendChild(input);
+  form.appendChild(sendBtn);
+  panel.appendChild(form);
+
+  // Загружаем сообщения
+  await loadTeacherMessages(room);
+  setupTeacherRealtime(room);
+
+  // Отправка по Enter
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendTeacherMsg();
+    }
+  };
+  input.oninput = () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  };
+
+  // Отмечаем прочитанным
+  await db.markRoomReadTeacher(room.key);
+  room.unread = 0;
+
+  // Обновляем список (счётчик)
+  const roomItem = Object.values(chatRooms).find(r => r.key === room.key);
+  if (roomItem) roomItem.unread = 0;
+}
+
+async function loadTeacherMessages(room) {
+  const box = document.getElementById('teacher-messages');
+  try {
+    const messages = await db.fetchMessages(room.type, room.id, 100);
+
+    box.innerHTML = '';
+    if (!messages.length) {
+      box.innerHTML = `
+        <div style="text-align:center;color:#9ca3af;padding:40px 20px;">
+          <div style="font-size:2rem;margin-bottom:8px;">💬</div>
+          Пока нет сообщений.
+        </div>`;
+      return;
+    }
+
+    messages.forEach(m => {
+      box.appendChild(makeTeacherMessageEl(m));
+    });
+    box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    console.error('Ошибка загрузки:', e);
+    box.innerHTML = `<div style="color:#ef4444;padding:20px;">Ошибка: ${e.message}</div>`;
+  }
+}
+
+function makeTeacherMessageEl(msg) {
+  const isTeacher = msg.author_type === 'teacher';
+  const isDeleted = msg.is_deleted;
+
+  const wrapper = el('div', {
+    style: `display:flex;flex-direction:column;
+            align-items:${isTeacher ? 'flex-end' : 'flex-start'};
+            max-width:85%;${isTeacher ? 'align-self:flex-end;' : 'align-self:flex-start;'}
+            ${isDeleted ? 'opacity:0.5;' : ''}`,
+  });
+
+  const name = el('div', {
+    style: 'font-size:0.75rem;color:#9ca3af;margin-bottom:3px;padding:0 8px;',
+  }, (isTeacher ? `👨‍🏫 ${msg.author_name}` : `👤 ${msg.author_name}`) 
+     + (isDeleted ? ' 🗑️ (удалено)' : ''));
+  wrapper.appendChild(name);
+
+  const bubble = el('div', {
+    style: `background:${isDeleted ? '#f3f4f6' : (isTeacher ? '#4f46e5' : '#fff')};
+            color:${isDeleted ? '#9ca3af' : (isTeacher ? '#fff' : '#1f2937')};
+            padding:10px 14px;
+            border-radius:16px;
+            ${isTeacher ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;'}
+            font-size:0.95rem;
+            line-height:1.4;
+            word-break:break-word;
+            white-space:pre-wrap;
+            box-shadow:0 1px 3px rgba(0,0,0,.08);
+            ${isDeleted ? 'text-decoration:line-through;' : ''}
+            ${!isTeacher && !isDeleted ? 'border-left:3px solid #f59e0b;' : ''}`,
+  }, msg.text);
+  wrapper.appendChild(bubble);
+
+  const footer = el('div', {
+    style: 'display:flex;gap:8px;align-items:center;font-size:0.7rem;color:#9ca3af;margin-top:3px;padding:0 8px;',
+  });
+  
+  footer.appendChild(el('span', {}, 
+    new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })));
+  
+  if (msg.edited_at) {
+    footer.appendChild(el('span', { style: 'font-style:italic;' }, '(изменено)'));
+  }
+
+  if (isDeleted) {
+    // Кнопка «Восстановить»
+    footer.appendChild(el('span', {
+      style: 'cursor:pointer;color:#22c55e;font-size:0.75rem;',
+      title: 'Восстановить',
+      onclick: async () => {
+        if (!confirm('Восстановить это сообщение?')) return;
+        try {
+          await db.restoreMessage(msg.id);
+          const room = chatRooms[currentChatRoom];
+          if (room) loadTeacherMessages(room);
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      },
+    }, '♻️'));
+  } else {
+    // Кнопка «Удалить»
+    footer.appendChild(el('span', {
+      style: 'cursor:pointer;color:#ef4444;font-size:0.75rem;',
+      title: 'Удалить сообщение',
+      onclick: async () => {
+        if (!confirm('Удалить это сообщение?')) return;
+        try {
+          await db.deleteMessage(msg.id);
+          const room = chatRooms[currentChatRoom];
+          if (room) loadTeacherMessages(room);
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      },
+    }, '🗑️'));
+  }
+
+  wrapper.appendChild(footer);
+  return wrapper;
+}
+
+async function sendTeacherMsg() {
+  const input = document.getElementById('teacher-chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const room = chatRooms[currentChatRoom];
+  if (!room) return;
+
+  input.disabled = true;
+  try {
+    const teacherName = currentUser?.user_metadata?.full_name || currentUser?.email || 'Учитель';
+    await db.sendTeacherMessage(room.type, room.id, text, teacherName);
+    input.value = '';
+    input.style.height = 'auto';
+    // Сообщение придёт через Realtime
+  } catch (e) {
+    alert('Ошибка отправки: ' + e.message);
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+function setupTeacherRealtime(room) {
+  // Отписываемся от старого
+  if (chatChannel) {
+    db.unsubscribeFromMessages(chatChannel);
+    chatChannel = null;
+  }
+
+  chatChannel = db.subscribeToMessages(room.type, room.id, (newMsg) => {
+    // Проверяем, что это наша комната
+    if (room.type === 'global' && newMsg.room_type !== 'global') return;
+    if (room.type === 'group' && newMsg.room_id !== room.id) return;
+    if (newMsg.is_deleted) return;
+
+    const box = document.getElementById('teacher-messages');
+    if (!box) return;
+
+    // Проверяем, нет ли уже (чтобы не дублировать своё)
+    // Проще всего — перезагрузить сообщения
+    loadTeacherMessages(room);
+  });
+}
+
+// ============================================
+// ДОМАШКИ (для учителя)
+// ============================================
+async function renderHomework() {
+  const root = document.getElementById('tab-homework');
+  root.innerHTML = '';
+
+  root.appendChild(el('p', {
+    style: 'color:#666;margin-bottom:16px;',
+  }, '📚 Домашки. Создавай задания — ученики отмечаются, ты ставишь баллы (0-10).'));
+
+  root.appendChild(el('button', {
+    style: 'background:#22c55e;color:#fff;padding:12px 20px;border:none;border-radius:12px;font-size:1rem;cursor:pointer;margin-bottom:16px;',
+    onclick: () => openHomeworkForm(),
+  }, '➕ Создать домашку'));
+
+  // Список домашек
+  const listBox = el('div', { id: 'homework-list' });
+  listBox.appendChild(el('p', {}, 'Загружаю...'));
+  root.appendChild(listBox);
+
+  try {
+    const { data: hwList, error } = await supabase
+      .from('homework')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    listBox.innerHTML = '';
+
+    if (!hwList.length) {
+      listBox.innerHTML = '<p>😕 Пока нет домашек.</p>';
+      return;
+    }
+
+    for (const hw of hwList) {
+      listBox.appendChild(await makeHomeworkCard(hw));
+    }
+  } catch (e) {
+    console.error('Ошибка:', e);
+    listBox.innerHTML = `<p style="color:#ef4444;">Ошибка: ${e.message}</p>`;
+  }
+}
+
+async function makeHomeworkCard(hw) {
+  const card = el('div', {
+    style: `background:#fff;padding:16px;border-radius:12px;
+            box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px;
+            border-left:5px solid #4f46e5;`,
+  });
+
+  // Заголовок
+  const header = el('div', {
+    style: 'display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;',
+  });
+
+  const info = el('div', { style: 'flex:1;' });
+  info.appendChild(el('div', {
+    style: 'font-weight:bold;font-size:1.1rem;color:#4f46e5;',
+  }, '📚 ' + hw.title));
+  if (hw.description) {
+    info.appendChild(el('div', {
+      style: 'font-size:0.95rem;color:#4f46e5;margin-top:4px;white-space:pre-wrap;',
+    }, hw.description));
+  }
+  if (hw.due_date) {
+    info.appendChild(el('div', {
+      style: 'font-size:0.85rem;color:#9ca3af;margin-top:6px;',
+    }, `📅 Срок: ${new Date(hw.due_date).toLocaleDateString('ru-RU')}`));
+  }
+  header.appendChild(info);
+
+  const delBtn = el('button', {
+    style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.9rem;',
+    onclick: async () => {
+      if (!confirm(`Удалить домашку «${hw.title}»? Все сдачи тоже удалятся.`)) return;
+      const { error } = await supabase.from('homework').delete().eq('id', hw.id);
+      if (error) { alert('Ошибка: ' + error.message); return; }
+      toast('Удалено', 'ok');
+      renderHomework();
+    },
+  }, '🗑️');
+  header.appendChild(delBtn);
+
+  card.appendChild(header);
+
+  // Сдачи — по ученикам
+  const submissionsBox = el('div', {
+    style: 'background:#f9fafb;border-radius:10px;padding:12px;',
+  });
+  submissionsBox.appendChild(el('div', {
+    style: 'font-weight:bold;color:#4f46e5;font-size:0.95rem;margin-bottom:10px;',
+  }, '👥 Сдачи учеников'));
+
+  // Загружаем сдачи
+  const { data: submissions } = await supabase
+    .from('homework_submissions')
+    .select('*')
+    .eq('homework_id', hw.id);
+
+  const subMap = {};
+  (submissions || []).forEach(s => subMap[s.student_id] = s);
+
+  // Список учеников (все активные)
+  const students = studentsCache.filter(s => s.is_active);
+
+  if (!students.length) {
+    submissionsBox.appendChild(el('p', { style: 'color:#9ca3af;' }, 'Нет активных учеников'));
+  } else {
+    students.forEach(student => {
+      const sub = subMap[student.id];
+      submissionsBox.appendChild(makeStudentSubmissionRow(hw, student, sub));
+    });
+  }
+
+  card.appendChild(submissionsBox);
+
+  return card;
+}
+
+function makeStudentSubmissionRow(hw, student, submission) {
+  const row = el('div', {
+    style: `display:flex;justify-content:space-between;align-items:center;gap:8px;
+            padding:8px 10px;background:#fff;border-radius:8px;margin-bottom:6px;`,
+  });
+
+  const info = el('div', { style: 'flex:1;' });
+  info.appendChild(el('div', {
+    style: 'font-weight:bold;font-size:0.9rem;',
+  }, student.full_name));
+
+  if (submission) {
+    if (submission.is_approved) {
+      info.appendChild(el('div', {
+        style: 'font-size:0.8rem;color:#22c55e;',
+      }, `✅ Принято · ${submission.score}/10`));
+    } else {
+      info.appendChild(el('div', {
+        style: 'font-size:0.8rem;color:#f59e0b;',
+      }, '⏳ Сдал, ждёт проверки'));
+    }
+  } else {
+    info.appendChild(el('div', {
+      style: 'font-size:0.8rem;color:#9ca3af;',
+    }, '— не сдал'));
+  }
+  row.appendChild(info);
+
+  // Учитель может поставить балл (даже без сдачи — сам отметит)
+  const btnBox = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
+
+  // Кнопка «Поставить балл»
+  btnBox.appendChild(el('button', {
+    style: `background:${submission?.is_approved ? '#f59e0b' : '#22c55e'};color:#fff;border:none;
+            padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;`,
+    onclick: async () => {
+      const currentScore = submission?.score ?? '';
+      const scoreStr = prompt(`Балл для ${student.full_name} (0-10):`, currentScore);
+      if (scoreStr === null) return;
+
+      const score = parseInt(scoreStr, 10);
+      if (isNaN(score) || score < 0 || score > 10) {
+        alert('Введи число от 0 до 10');
+        return;
+      }
+
+      try {
+        const teacherName = currentUser?.user_metadata?.full_name || currentUser?.email || 'Учитель';
+        const { error } = await supabase
+          .from('homework_submissions')
+          .upsert({
+            homework_id: hw.id,
+            student_id: student.id,
+            score: score,
+            is_submitted: true,
+            is_approved: true,
+            approved_by: teacherName,
+            approved_at: new Date().toISOString(),
+          }, { onConflict: 'homework_id,student_id' });
+
+        if (error) throw error;
+        toast('Балл выставлен! ✅', 'ok');
+        renderHomework();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    },
+  }, submission?.is_approved ? '✏️ Изменить' : '✅ Поставить балл'));
+
+  // Кнопка «Удалить сдачу»
+  if (submission) {
+    btnBox.appendChild(el('button', {
+      style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
+      onclick: async () => {
+        if (!confirm(`Удалить сдачу ${student.full_name}?`)) return;
+        const { error } = await supabase
+          .from('homework_submissions')
+          .delete()
+          .eq('id', submission.id);
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        toast('Удалено', 'ok');
+        renderHomework();
+      },
+    }, '🗑️'));
+  }
+
+  row.appendChild(btnBox);
+  return row;
+}
+
+function openHomeworkForm() {
+  const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
+
+  const titleInput = el('input', {
+    placeholder: 'Название домашки *',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
+  });
+
+  const descInput = el('textarea', {
+    placeholder: 'Описание / что сделать',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;min-height:100px;',
+  });
+
+  const dueInput = el('input', {
+    type: 'date',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
+  });
+
+  form.appendChild(el('label', {}, 'Название *'));
+  form.appendChild(titleInput);
+  form.appendChild(el('label', {}, 'Описание'));
+  form.appendChild(descInput);
+  form.appendChild(el('label', {}, 'Срок сдачи'));
+  form.appendChild(dueInput);
+
+  openModal('📚 Новая домашка', form, async () => {
+    if (!titleInput.value.trim()) throw new Error('Введи название');
+
+    const { error } = await supabase
+      .from('homework')
+      .insert({
+        title: titleInput.value.trim(),
+        description: descInput.value.trim() || null,
+        due_date: dueInput.value || null,
+      });
+
+    if (error) throw error;
+    toast('Домашка создана! 📚', 'ok');
+    renderHomework();
+  });
+}
+
 // Экспорт для отладки
 window.__app = { 
   groupsCache, 
@@ -1679,4 +2280,6 @@ window.__app = {
   renderPasses,
   renderRequests,
   renderAnnouncements,
+  renderChats,
+  renderHomework,
 };

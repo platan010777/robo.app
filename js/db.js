@@ -408,3 +408,154 @@ export async function deleteComment(id) {
     .eq('id', id);
   if (error) throw error;
 }
+
+// ============================================
+// ЧАТ
+// ============================================
+
+// === ДЛЯ УЧИТЕЛЯ ===
+
+// Все сообщения комнаты (для учителя)
+export async function fetchMessages(roomType, roomId = null, limit = 100) {
+  let query = supabase
+    .from('messages')
+    .select('*')
+    .eq('room_type', roomType)
+    //.eq('is_deleted', false) // НЕТ фильтра is_deleted — учитель видит ВСЁ
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (roomType === 'global') {
+    query = query.is('room_id', null);
+  } else {
+    query = query.eq('room_id', roomId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).reverse();
+}
+
+// Учитель отправляет сообщение
+export async function sendTeacherMessage(roomType, roomId, text, teacherName) {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      room_type: roomType,
+      room_id: roomId,
+      author_type: 'teacher',
+      author_id: null,
+      author_name: teacherName,
+      text: text,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Мягкое удаление сообщения (is_deleted = true)
+export async function deleteMessage(messageId) {
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_deleted: true })
+    .eq('id', messageId);
+  if (error) throw error;
+}
+
+// Учитель редактирует сообщение (на всякий случай)
+export async function editMessage(messageId, newText) {
+  const { error } = await supabase
+    .from('messages')
+    .update({ 
+      text: newText,
+      edited_at: new Date().toISOString(),
+    })
+    .eq('id', messageId);
+  if (error) throw error;
+}
+
+// Восстановить удалённое сообщение (только учитель)
+export async function restoreMessage(messageId) {
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_deleted: false })
+    .eq('id', messageId);
+  if (error) throw error;
+}
+
+// Непрочитанные для учителя (по последнему прочтению)
+export async function getTeacherUnreadCount(roomKey) {
+  const { data: readRow } = await supabase
+    .from('message_reads')
+    .select('last_read_at')
+    .eq('user_token', 'teacher')
+    .eq('room_key', roomKey)
+    .maybeSingle();
+
+  const lastRead = readRow?.last_read_at || '1970-01-01';
+
+  let query = supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .gt('created_at', lastRead)
+    .eq('is_deleted', false)
+    .neq('author_type', 'teacher');
+
+  if (roomKey === 'global') {
+    query = query.eq('room_type', 'global').is('room_id', null);
+  } else {
+    const groupId = roomKey.replace('group:', '');
+    query = query.eq('room_type', 'group').eq('room_id', groupId);
+  }
+
+  const { count } = await query;
+  return count || 0;
+}
+
+// Отметить комнату прочитанной для учителя
+export async function markRoomReadTeacher(roomKey) {
+  await supabase
+    .from('message_reads')
+    .upsert({
+      user_token: 'teacher',
+      room_key: roomKey,
+      last_read_at: new Date().toISOString(),
+    }, { onConflict: 'user_token,room_key' });
+}
+
+// === REALTIME ПОДПИСКА ===
+export function subscribeToMessages(roomType, roomId, callback) {
+  const channelName = roomType === 'global'
+    ? 'messages:global'
+    : `messages:group:${roomId}`;
+
+  const channel = supabase
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: roomType === 'global'
+          ? 'room_type=eq.global'
+          : `room_id=eq.${roomId}`,
+      },
+      (payload) => callback(payload.new)
+    )
+    .subscribe();
+
+  return channel;
+}
+
+export function unsubscribeFromMessages(channel) {
+  if (channel) supabase.removeChannel(channel);
+}
+
+window.__db = { 
+  fetchMessages, 
+  sendTeacherMessage, 
+  deleteMessage,
+  subscribeToMessages,
+};

@@ -110,6 +110,9 @@ async function loadByToken() {
       renderMyStats(stats);
     }
 
+    // Инициализация чата
+    initChat(student.group_id, student.full_name);
+
     // 3. Загружаем заявки ученика
     await loadMyRequests();
 
@@ -138,7 +141,13 @@ async function loadByToken() {
   }
 }
 
-// Кэш заявок ученика
+    // Загружаем домашки
+    await loadMyHomework();
+
+    // Загружаем общий Топ-10
+    await loadGlobalTop();
+
+    // Кэш заявок ученика
 let myRequests = {};  // { lesson_id: { status, reason, is_approved } }
 
 async function loadMyRequests() {
@@ -185,6 +194,196 @@ async function loadMyComments() {
   } catch (e) {
     console.error('Ошибка комментариев:', e);
   }
+}
+
+// ============================================
+// ДОМАШКИ УЧЕНИКА
+// ============================================
+async function loadMyHomework() {
+  try {
+    // Получаем все домашки
+    const { data: hwList, error: hwError } = await supabase
+      .from('homework')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (hwError) throw hwError;
+    if (!hwList || !hwList.length) return;
+
+    // Получаем student_id по токену
+    const { data: studentData, error: stErr } = await supabase
+      .rpc('get_student_by_token', { p_token: studentToken });
+
+    if (stErr) throw stErr;
+    if (!studentData || !studentData.length) return;
+
+    const studentId = studentData[0].student_id;
+
+    // Теперь получаем сдачи
+    const { data: submissions, error: subErr } = await supabase
+      .from('homework_submissions')
+      .select('*')
+      .eq('student_id', studentId);
+
+    if (subErr) throw subErr;
+
+    const subMap = {};
+    (submissions || []).forEach(s => subMap[s.homework_id] = s);
+
+    // Рендерим
+    renderHomeworkBox(hwList, subMap, studentId);
+  } catch (e) {
+    console.error('Ошибка домашек:', e);
+  }
+}
+
+function renderHomeworkBox(hwList, subMap, studentId) {
+  const lessonsListEl = document.getElementById('lessons-list');
+  if (!lessonsListEl) return;
+
+  const box = document.createElement('div');
+  box.id = 'homework-box';
+  box.style.cssText = 'margin-bottom:20px;';
+
+  box.innerHTML = `
+    <div style="font-size:1.1rem;font-weight:bold;color:#4f46e5;margin-bottom:12px;">
+      📚 Мои домашки
+    </div>
+  `;
+
+  hwList.forEach(hw => {
+    const sub = subMap[hw.id];
+    const card = document.createElement('div');
+    card.style.cssText = `
+      background:#fff;
+      border-radius:12px;
+      padding:14px;
+      margin-bottom:10px;
+      box-shadow:0 2px 8px rgba(0,0,0,.08);
+      border-left:5px solid ${sub?.is_approved ? '#22c55e' : sub ? '#f59e0b' : '#e5e7eb'};
+    `;
+
+    let statusHtml = '';
+    if (sub?.is_approved) {
+      statusHtml = `<div style="margin-top:8px;padding:8px 12px;background:#dcfce7;color:#16a34a;border-radius:8px;font-size:0.9rem;font-weight:bold;">✅ Принято · ${sub.score}/10 баллов</div>`;
+    } else if (sub) {
+      statusHtml = `<div style="margin-top:8px;padding:8px 12px;background:#fef3c7;color:#92400e;border-radius:8px;font-size:0.9rem;">⏳ На проверке</div>`;
+    } else {
+      statusHtml = `<button class="hw-submit-btn" style="margin-top:8px;width:100%;background:#4f46e5;color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:0.95rem;font-weight:bold;">📤 Сдать</button>`;
+    }
+
+    card.innerHTML = `
+      <div style="font-weight:bold;font-size:1rem;color:#4f46e5;">📚 ${hw.title}</div>
+      ${hw.description ? `<div style="font-size:0.9rem;color:#6b7280;margin-top:6px;white-space:pre-wrap;">${hw.description}</div>` : ''}
+      ${hw.due_date ? `<div style="font-size:0.8rem;color:#9ca3af;margin-top:6px;">📅 Срок: ${new Date(hw.due_date).toLocaleDateString('ru-RU')}</div>` : ''}
+      ${statusHtml}
+    `;
+
+    // Обработчик "Сдать"
+    const submitBtn = card.querySelector('.hw-submit-btn');
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправляю...';
+        try {
+          const { error } = await supabase
+            .from('homework_submissions')
+            .insert({
+              homework_id: hw.id,
+              student_id: studentId,
+              score: null,
+              is_submitted: true,
+              is_approved: false,
+            });
+          if (error) throw error;
+          alert('Домашка отправлена! Учитель проверит.');
+          loadMyHomework();
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+          submitBtn.disabled = false;
+          submitBtn.textContent = '📤 Сдать';
+        }
+      };
+    }
+
+    box.appendChild(card);
+  });
+
+  lessonsListEl.parentNode.insertBefore(box, lessonsListEl);
+}
+
+// ============================================
+// ТОП-10 ОБЩИЙ
+// ============================================
+async function loadGlobalTop() {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_global_top', { p_limit: 10 });
+
+    if (error) throw error;
+    if (!data || !data.length) return;
+
+    // Получаем мой student_id
+    const { data: studentData } = await supabase
+      .rpc('get_student_by_token', { p_token: studentToken });
+
+    const myId = studentData?.[0]?.student_id || null;
+
+    renderTopBox(data, myId);
+  } catch (e) {
+    console.error('Ошибка топа:', e);
+  }
+}
+
+function renderTopBox(students, myStudentId) {
+  const lessonsListEl = document.getElementById('lessons-list');
+  if (!lessonsListEl) return;
+
+  const old = document.getElementById('global-top-box');
+  if (old) old.remove();
+
+  const box = document.createElement('div');
+  box.id = 'global-top-box';
+  box.style.cssText = 'margin-bottom:20px;background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);';
+
+  box.innerHTML = `<div style="font-size:1.1rem;font-weight:bold;color:#4f46e5;margin-bottom:14px;">🏆 Топ-10 школы</div>`;
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  students.forEach((s, idx) => {
+    const isMe = s.student_id === myStudentId;
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display:flex;align-items:center;gap:10px;
+      padding:8px 10px;border-radius:10px;margin-bottom:6px;
+      background:${isMe ? '#eef2ff' : (idx < 3 ? '#fef9c3' : '#f9fafb')};
+      ${isMe ? 'border:2px solid #4f46e5;' : ''}
+    `;
+
+    const place = idx < 3 ? medals[idx] : `${idx + 1}.`;
+
+    row.innerHTML = `
+      <div style="font-size:1.3rem;min-width:32px;text-align:center;">${place}</div>
+      <div style="flex:1;">
+        <div style="font-weight:bold;font-size:0.9rem;color:#1f2937;">${s.full_name}${isMe ? ' 👈' : ''}</div>
+        <div style="font-size:0.75rem;color:#9ca3af;">🏫 ${s.group_name || '—'} · ✅ ${s.present} · 📚 ${s.homework_count || 0}</div>
+      </div>
+      <div style="font-weight:bold;font-size:1rem;color:#4f46e5;text-align:right;">
+        ${s.rating}<div style="font-size:0.65rem;color:#9ca3af;font-weight:normal;">очков</div>
+      </div>
+    `;
+    box.appendChild(row);
+  });
+
+  // Моё место (если не в топ-10)
+  if (myStudentId && !students.find(s => s.student_id === myStudentId)) {
+    const myPlace = document.createElement('div');
+    myPlace.style.cssText = 'margin-top:10px;padding-top:10px;border-top:2px dashed #e5e7eb;text-align:center;font-size:0.85rem;color:#6b7280;';
+    myPlace.textContent = '📍 Ты не в Топ-10. Продолжай в том же духе!';
+    box.appendChild(myPlace);
+  }
+
+  lessonsListEl.parentNode.insertBefore(box, lessonsListEl);
 }
 
 function renderAnnouncementsBox(anns) {
@@ -654,6 +853,501 @@ function getStatusInfo(status) {
     excused: { label: 'Болею', emoji: '📝', color: '#3b82f6' },
   };
   return map[status] || { label: status, emoji: '❓', color: '#666' };
+}
+
+// ============================================
+// ЧАТ
+// ============================================
+let chatState = {
+  currentRoom: 'group',      // 'group' | 'global'
+  groupId: null,
+  studentName: null,
+  channel: null,
+  messages: [],
+};
+
+// Инициализация чата (вызывается после loadByToken)
+function initChat(groupId, studentName) {
+  chatState.groupId = groupId;
+  chatState.studentName = studentName;
+
+  const chatBtn = document.getElementById('chat-btn');
+  const modal = document.getElementById('chat-modal');
+  const closeBtn = document.getElementById('chat-close');
+  const tabGroup = document.getElementById('chat-tab-group');
+  const tabGlobal = document.getElementById('chat-tab-global');
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+
+  // Открыть чат
+  chatBtn.onclick = () => {
+    modal.style.display = 'flex';
+    openRoom('group');
+    updateUnreadBadges();
+  };
+
+  // Закрыть
+  closeBtn.onclick = () => {
+    modal.style.display = 'none';
+    closeChannel();
+  };
+
+  // Закрытие по клику на фон
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+      closeChannel();
+    }
+  };
+
+  // Переключение вкладок
+  tabGroup.onclick = () => {
+    if (chatState.currentRoom === 'group') return;
+    openRoom('group');
+  };
+  tabGlobal.onclick = () => {
+    if (chatState.currentRoom === 'global') return;
+    openRoom('global');
+  };
+
+  // Отправка
+  sendBtn.onclick = sendMessage;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // Автоувеличение textarea
+  input.oninput = () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  };
+
+  // Обновляем счётчик непрочитанных каждые 30 сек
+  setInterval(updateUnreadBadges, 30000);
+  updateUnreadBadges();
+}
+
+function openRoom(roomType) {
+  chatState.currentRoom = roomType;
+
+  // Обновляем вкладки
+  const tabGroup = document.getElementById('chat-tab-group');
+  const tabGlobal = document.getElementById('chat-tab-global');
+
+  if (roomType === 'group') {
+    tabGroup.style.color = '#4f46e5';
+    tabGroup.style.borderBottomColor = '#4f46e5';
+    tabGroup.style.fontWeight = 'bold';
+    tabGlobal.style.color = '#6b7280';
+    tabGlobal.style.borderBottomColor = 'transparent';
+    tabGlobal.style.fontWeight = 'normal';
+  } else {
+    tabGlobal.style.color = '#4f46e5';
+    tabGlobal.style.borderBottomColor = '#4f46e5';
+    tabGlobal.style.fontWeight = 'bold';
+    tabGroup.style.color = '#6b7280';
+    tabGroup.style.borderBottomColor = 'transparent';
+    tabGroup.style.fontWeight = 'normal';
+  }
+
+  loadMessages();
+  setupRealtime();
+  markRoomRead();
+}
+
+async function loadMessages() {
+  const box = document.getElementById('chat-messages');
+  box.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Загружаю...</div>';
+
+  try {
+    const roomType = chatState.currentRoom;
+    const roomId = roomType === 'group' ? chatState.groupId : null;
+
+    const { data, error } = await supabase
+      .rpc('get_my_messages', {
+        p_token: studentToken,
+        p_room_type: roomType,
+        p_room_id: roomId,
+        p_limit: 100,
+      });
+
+    if (error) throw error;
+
+    chatState.messages = data || [];
+    renderMessages();
+  } catch (e) {
+    console.error('Ошибка загрузки сообщений:', e);
+    box.innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px;">Ошибка: ${e.message}</div>`;
+  }
+}
+
+function renderMessages() {
+  const box = document.getElementById('chat-messages');
+  box.innerHTML = '';
+
+  if (!chatState.messages.length) {
+    box.innerHTML = `
+      <div style="text-align:center;color:#9ca3af;padding:40px 20px;">
+        <div style="font-size:2rem;margin-bottom:8px;">💬</div>
+        Пока нет сообщений.<br>
+        Напиши первым!
+      </div>
+    `;
+    return;
+  }
+
+  chatState.messages.forEach(m => {
+    box.appendChild(makeMessageEl(m));
+  });
+
+  // Скролл вниз
+  box.scrollTop = box.scrollHeight;
+}
+
+function makeMessageEl(msg) {
+  const isMine = msg.is_mine;
+  const isTeacher = msg.author_type === 'teacher';
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `display:flex;flex-direction:column;align-items:${isMine ? 'flex-end' : 'flex-start'};max-width:85%;${isMine ? 'align-self:flex-end;' : 'align-self:flex-start;'}`;
+
+  const name = document.createElement('div');
+  name.style.cssText = 'font-size:0.75rem;color:#9ca3af;margin-bottom:3px;padding:0 8px;';
+  name.textContent = isTeacher ? `👨‍🏫 ${msg.author_name}` : msg.author_name;
+  wrapper.appendChild(name);
+
+  const bubble = document.createElement('div');
+  bubble.style.cssText = `
+    background:${isMine ? '#4f46e5' : (isTeacher ? '#fef3c7' : '#fff')};
+    color:${isMine ? '#fff' : '#1f2937'};
+    padding:10px 14px;
+    border-radius:16px;
+    ${isMine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;'}
+    font-size:0.95rem;
+    line-height:1.4;
+    word-break:break-word;
+    white-space:pre-wrap;
+    box-shadow:0 1px 3px rgba(0,0,0,.08);
+    ${isTeacher ? 'border-left:3px solid #f59e0b;' : ''}
+    ${isMine ? 'cursor:pointer;' : ''}
+  `;
+  bubble.textContent = msg.text;
+  wrapper.appendChild(bubble);
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'font-size:0.7rem;color:#9ca3af;margin-top:3px;padding:0 8px;display:flex;gap:6px;align-items:center;';
+  
+  const time = document.createElement('span');
+  time.textContent = new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  footer.appendChild(time);
+
+  // Пометка «изменено»
+  if (msg.edited_at) {
+    const edited = document.createElement('span');
+    edited.textContent = '(изменено)';
+    edited.style.cssText = 'font-style:italic;';
+    footer.appendChild(edited);
+  }
+
+  // Кнопка «Редактировать» — только для своих и в течение 15 минут
+  if (isMine) {
+    const age = Date.now() - new Date(msg.created_at).getTime();
+    const within15min = age < 15 * 60 * 1000;
+
+    if (within15min) {
+      const editBtn = document.createElement('span');
+      editBtn.textContent = '✏️';
+      editBtn.style.cssText = 'cursor:pointer;';
+      editBtn.title = 'Редактировать';
+      editBtn.onclick = () => editMyMessage(msg, wrapper);
+      footer.appendChild(editBtn);
+    }
+  }
+
+  wrapper.appendChild(footer);
+
+  return wrapper;
+}
+
+function editMyMessage(msg, wrapper) {
+  const bubble = wrapper.querySelector('div:nth-child(2)');
+  const oldText = msg.text;
+
+  // Создаём textarea
+  const textarea = document.createElement('textarea');
+  textarea.value = oldText;
+  textarea.style.cssText = `
+    background:#fff;
+    color:#1f2937;
+    padding:10px 14px;
+    border:2px solid #4f46e5;
+    border-radius:16px;
+    font-size:0.95rem;
+    font-family:inherit;
+    width:100%;
+    min-width:200px;
+    resize:none;
+    outline:none;
+  `;
+  
+  // Заменяем пузырь на textarea
+  bubble.replaceWith(textarea);
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  textarea.style.height = textarea.scrollHeight + 'px';
+
+  // Кнопки
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:6px;margin-top:6px;';
+  
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '💾 Сохранить';
+  saveBtn.style.cssText = 'background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;';
+  
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = '✕ Отмена';
+  cancelBtn.style.cssText = 'background:#e5e7eb;color:#1f2937;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;';
+
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(cancelBtn);
+  textarea.after(btnRow);
+
+  // Сохранение
+  saveBtn.onclick = async () => {
+    const newText = textarea.value.trim();
+    if (!newText) return;
+    if (newText === oldText) {
+      cancelBtn.onclick();
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('edit_my_message', {
+        p_token: studentToken,
+        p_message_id: msg.id,
+        p_new_text: newText,
+      });
+
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.error);
+
+      // Обновляем локальные данные
+      msg.text = newText;
+      msg.edited_at = new Date().toISOString();
+
+      // Перерисовываем сообщение
+      const newEl = makeMessageEl(msg);
+      wrapper.replaceWith(newEl);
+    } catch (e) {
+      console.error('Ошибка редактирования:', e);
+      alert('Ошибка: ' + e.message);
+    }
+  };
+
+  // Отмена
+  cancelBtn.onclick = () => {
+    const newBubble = document.createElement('div');
+    newBubble.style.cssText = bubble.style.cssText;
+    newBubble.textContent = oldText;
+    textarea.replaceWith(newBubble);
+    btnRow.remove();
+  };
+
+  // Ctrl+Enter — сохранить
+  textarea.onkeydown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      saveBtn.click();
+    }
+    if (e.key === 'Escape') {
+      cancelBtn.click();
+    }
+  };
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Блокируем на время отправки
+  input.disabled = true;
+
+  try {
+    const roomType = chatState.currentRoom;
+    const roomId = roomType === 'group' ? chatState.groupId : null;
+
+    const { data, error } = await supabase
+      .rpc('send_student_message', {
+        p_token: studentToken,
+        p_room_type: roomType,
+        p_room_id: roomId,
+        p_text: text,
+      });
+
+    if (error) throw error;
+    if (data && !data.success) throw new Error(data.error || 'Ошибка отправки');
+
+    input.value = '';
+    input.style.height = 'auto';
+  } catch (e) {
+    console.error('Ошибка отправки:', e);
+    alert('Ошибка: ' + e.message);
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+// Realtime подписка
+function setupRealtime() {
+  closeChannel();
+
+  const roomType = chatState.currentRoom;
+  const roomId = roomType === 'group' ? chatState.groupId : null;
+
+  const filter = roomType === 'global'
+    ? 'room_type=eq.global'
+    : `room_id=eq.${roomId}`;
+
+  const channelName = roomType === 'global'
+    ? 'messages:global:' + studentToken.substring(0, 8)
+    : `messages:group:${roomId}:` + studentToken.substring(0, 8);
+
+  chatState.channel = supabase
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: filter,
+      },
+      async (payload) => {
+        const newMsg = payload.new;
+        // Проверяем, что это наша комната
+        if (roomType === 'global' && newMsg.room_type !== 'global') return;
+        if (roomType === 'group' && newMsg.room_id !== roomId) return;
+
+        // Проверяем, не наше ли сообщение (чтобы не дублировать)
+        if (newMsg.author_type === 'student' && newMsg.author_id) {
+          // Мы не знаем свой student_id напрямую, но можем проверить по имени
+          // Проще — перезагрузить список
+        }
+
+        // Добавляем сообщение
+        const msgForRender = {
+          id: newMsg.id,
+          author_type: newMsg.author_type,
+          author_name: newMsg.author_name,
+          text: newMsg.text,
+          created_at: newMsg.created_at,
+          is_mine: false, // пересчитаем при перезагрузке
+        };
+
+        chatState.messages.push(msgForRender);
+        renderMessages();
+
+        // Обновляем непрочитанные, если чат закрыт
+        const modal = document.getElementById('chat-modal');
+        if (modal.style.display === 'none') {
+          updateUnreadBadges();
+        } else {
+          markRoomRead();
+        }
+      }
+    )
+    .subscribe();
+}
+
+function closeChannel() {
+  if (chatState.channel) {
+    supabase.removeChannel(chatState.channel);
+    chatState.channel = null;
+  }
+}
+
+async function markRoomRead() {
+  const roomKey = chatState.currentRoom === 'global'
+    ? 'global'
+    : 'group:' + chatState.groupId;
+
+  try {
+    await supabase.rpc('mark_room_read', {
+      p_token: studentToken,
+      p_room_key: roomKey,
+    });
+    updateUnreadBadges();
+  } catch (e) {
+    console.error('Ошибка отметки прочтения:', e);
+  }
+}
+
+async function updateUnreadBadges() {
+  try {
+    // Считаем непрочитанные в обеих комнатах
+    const groupKey = 'group:' + chatState.groupId;
+
+    const [groupRes, globalRes] = await Promise.all([
+      supabase.rpc('get_unread_count', {
+        p_token: studentToken,
+        p_room_type: 'group',
+        p_room_id: chatState.groupId,
+      }),
+      supabase.rpc('get_unread_count', {
+        p_token: studentToken,
+        p_room_type: 'global',
+        p_room_id: null,
+      }),
+    ]);
+
+    const groupUnread = groupRes.data || 0;
+    const globalUnread = globalRes.data || 0;
+    const total = groupUnread + globalUnread;
+
+    // Обновляем бейдж в шапке
+    const badge = document.getElementById('chat-badge');
+    if (total > 0) {
+      badge.textContent = total > 99 ? '99+' : total;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    // Обновляем бейджи на вкладках
+    updateTabBadge('chat-tab-group', groupUnread);
+    updateTabBadge('chat-tab-global', globalUnread);
+  } catch (e) {
+    console.error('Ошибка подсчёта непрочитанных:', e);
+  }
+}
+
+function updateTabBadge(tabId, count) {
+  const tab = document.getElementById(tabId);
+  if (!tab) return;
+
+  // Удаляем старый бейдж
+  const old = tab.querySelector('.tab-badge');
+  if (old) old.remove();
+
+  if (count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'tab-badge';
+    badge.textContent = count;
+    badge.style.cssText = `
+      background:#ef4444;color:#fff;
+      border-radius:999px;
+      padding:1px 7px;
+      font-size:0.7rem;
+      margin-left:6px;
+      font-weight:bold;
+    `;
+    tab.appendChild(badge);
+  }
 }
 
 loadLessons();
