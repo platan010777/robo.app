@@ -279,6 +279,126 @@ async function loadLessonsTab() {
 }
 
 // ============================================
+// ВКЛАДКА "МОЙ ДОСТУП" (ученик)
+// ============================================
+async function loadAccessTab() {
+  const container = document.getElementById('access-content');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  const fullUrl = window.location.href;
+
+  // === БЛОК: QR-КОД ===
+  const qrBox = document.createElement('div');
+  qrBox.style.cssText = `
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    text-align: center;
+  `;
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullUrl)}&color=4f46e5&bgcolor=ffffff&margin=10`;
+
+  qrBox.innerHTML = `
+    <div style="font-size:1.1rem;font-weight:bold;color:#4f46e5;margin-bottom:12px;">
+      📱 Мой QR-код
+    </div>
+    <div style="font-size:0.85rem;color:#6b7280;margin-bottom:16px;">
+      Покажи этот QR — быстро войти в личный кабинет с телефона
+    </div>
+    <img src="${qrUrl}" alt="Мой QR-код" style="width:200px;height:200px;border:2px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff;">
+  `;
+
+  container.appendChild(qrBox);
+
+  // === БЛОК: КНОПКА "ПОДЕЛИТЬСЯ" ===
+  const shareBox = document.createElement('div');
+  shareBox.style.cssText = `
+    background: linear-gradient(135deg, #eef2ff, #ddd6fe);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border-left: 5px solid #4f46e5;
+  `;
+
+  shareBox.innerHTML = `
+    <div style="font-size:1.05rem;font-weight:bold;color:#4f46e5;margin-bottom:8px;">
+      📤 Поделиться ссылкой
+    </div>
+    <div style="font-size:0.85rem;color:#6b7280;margin-bottom:14px;">
+      Отправь ссылку себе в Telegram / WhatsApp / Сохранёнки.<br>
+      <b>Открой её на компьютере</b> — и работай с удобством.
+    </div>
+    <button
+      id="access-share-btn"
+      style="width:100%;background:#4f46e5;color:#fff;border:none;padding:14px 20px;border-radius:12px;cursor:pointer;font-size:1rem;font-weight:bold;"
+    >
+      📤 Поделиться ссылкой
+    </button>
+  `;
+
+  container.appendChild(shareBox);
+
+  // === БЛОК: ИНСТРУКЦИЯ ===
+  const helpBox = document.createElement('div');
+  helpBox.style.cssText = `
+    background: #fef3c7;
+    border-radius: 16px;
+    padding: 16px;
+    border-left: 5px solid #f59e0b;
+    font-size: 0.9rem;
+    color: #92400e;
+    line-height: 1.6;
+  `;
+
+  helpBox.innerHTML = `
+    <div style="font-weight:bold;margin-bottom:8px;">💡 Как работать на ПК</div>
+    1. Нажми <b>«📤 Поделиться ссылкой»</b><br>
+    2. Отправь её себе в <b>Telegram</b> (или любой мессенджер)<br>
+    3. Открой <b>Telegram на компьютере</b><br>
+    4. Перейди по ссылке — <b>всё готово!</b>
+  `;
+
+  container.appendChild(helpBox);
+
+  // === ОБРАБОТЧИК КНОПКИ ===
+  const shareBtn = document.getElementById('access-share-btn');
+
+  if (navigator.share) {
+    shareBtn.onclick = async () => {
+      try {
+        await navigator.share({
+          title: 'КЛАСС РОБОТОТЕХНИКИ',
+          text: 'Моя ссылка на личный кабинет',
+          url: fullUrl,
+        });
+      } catch (e) {
+        // Отмена — не страшно
+      }
+    };
+  } else {
+    shareBtn.textContent = '📋 Скопировать ссылку';
+    shareBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+        showStudentToast('📋 Ссылка скопирована!', 'ok');
+      } catch (e) {
+        const temp = document.createElement('input');
+        temp.value = fullUrl;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showStudentToast('📋 Ссылка скопирована!', 'ok');
+      }
+    };
+  }
+}
+
+// ============================================
 // СТАТИСТИКА (карточка)
 // ============================================
 async function loadMyAttendance(studentId) {
@@ -858,6 +978,7 @@ function initStudentMenu() {
     if (tab === 'top') loadGlobalTop();
     if (tab === 'lessons') loadLessonsTab();
     if (tab === 'schedule') loadScheduleTab();
+    if (tab === 'access') loadAccessTab();
   }
 
   document.querySelectorAll('.side-menu-item').forEach(btn => {
@@ -1307,5 +1428,6 @@ function openFileUploader(homeworkId) {
   skipBtn.onclick = () => modal.remove();
   modal.onclick = (e) => {
     if (e.target === modal) modal.remove();
-  };
+  };  
 }
+
