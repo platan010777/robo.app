@@ -10,13 +10,85 @@
   <link rel="icon" href="icons/icon-192.png" />
 </head>
 <body>
-  <header class="topbar">
-    <h1>🤖 КЛАСС РОБОТОТЕХНИКИ: журнал</h1>
+    <header class="topbar">
+    <button id="burger-btn" class="burger-btn" aria-label="Меню">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <h1>🤖 КЛАСС РОБОТОТЕХНИКИ</h1>
     <div id="user-info"></div>
   </header>
 
+  <!-- Затемнение фона -->
+  <div id="menu-overlay" class="menu-overlay"></div>
+
+  <!-- Боковое меню -->
+  <aside id="side-menu" class="side-menu">
+    <div class="side-menu-header">
+      <span class="side-menu-logo">🤖</span>
+      <span class="side-menu-title">КЛАСС РОБОТОТЕХНИКИ</span>
+    </div>
+    <nav class="side-menu-nav">
+      <button data-tab="journal" class="side-menu-item active">
+        <span class="menu-icon">📋</span>
+        <span>Журнал</span>
+      </button>
+      <button data-tab="requests" class="side-menu-item">
+        <span class="menu-icon">📨</span>
+        <span>Заявки</span>
+        <span class="menu-badge" id="badge-requests"></span>
+      </button>
+      <button data-tab="students" class="side-menu-item">
+        <span class="menu-icon">👥</span>
+        <span>Ученики</span>
+      </button>
+      <button data-tab="lessons" class="side-menu-item">
+        <span class="menu-icon">📅</span>
+        <span>Занятия</span>
+      </button>
+      <button data-tab="schedule" class="side-menu-item">
+        <span class="menu-icon">🗓️</span>
+        <span>Расписание</span>
+      </button>
+      <button data-tab="reports" class="side-menu-item">
+        <span class="menu-icon">📊</span>
+        <span>Отчёты</span>
+      </button>
+      <button data-tab="qrcodes" class="side-menu-item">
+        <span class="menu-icon">📱</span>
+        <span>QR групп</span>
+      </button>
+      <button data-tab="passes" class="side-menu-item">
+        <span class="menu-icon">🎫</span>
+        <span>Пропуска</span>
+      </button>
+      <button data-tab="announcements" class="side-menu-item">
+        <span class="menu-icon">📢</span>
+        <span>Объявления</span>
+      </button>
+      <button data-tab="chats" class="side-menu-item">
+        <span class="menu-icon">💬</span>
+        <span>Чаты</span>
+        <span class="menu-badge" id="badge-chats"></span>
+      </button>
+      <button data-tab="homework" class="side-menu-item">
+        <span class="menu-icon">📚</span>
+        <span>Домашки</span>
+      </button>
+      <button data-tab="settings" class="side-menu-item">
+        <span class="menu-icon">⚙️</span>
+        <span>Настройки</span>
+      </button>
+    </nav>
+    <div class="side-menu-footer">
+      <div id="menu-user-info"></div>
+    </div>
+  </aside>
+
    <nav class="tabs">
     <button data-tab="journal" class="active">📋 Журнал</button>
+    <button data-tab="schedule">🗓️ Расписание</button>
     <button data-tab="requests">📨 Заявки</button>
     <button data-tab="students">👥 Ученики</button>
     <button data-tab="lessons">📅 Занятия</button>
@@ -30,6 +102,10 @@
   </nav>
 
      <main id="app">
+    <section id="tab-schedule" class="tab">
+      <h2>🗓️ Расписание на неделю</h2>
+      <p>Скоро тут будет расписание...</p>
+    </section>
     <section id="tab-journal" class="tab active">
       <h2>📋 Журнал посещаемости</h2>
     </section>

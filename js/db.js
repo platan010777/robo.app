@@ -553,6 +553,165 @@ export function unsubscribeFromMessages(channel) {
   if (channel) supabase.removeChannel(channel);
 }
 
+// ============================================
+// ОЧИСТКА СТАРЫХ ФАЙЛОВ
+// ============================================
+
+// Запустить очистку файлов старше 30 дней
+export async function cleanupOldFiles() {
+  const { data, error } = await supabase
+    .rpc('cleanup_old_homework_files');
+  
+  if (error) throw error;
+  return data; // число удалённых файлов
+}
+
+// Получить статистику файлов (для отображения)
+export async function fetchFilesStats() {
+  const { data, error } = await supabase
+    .from('homework_files')
+    .select('id, file_size, uploaded_at');
+  
+  if (error) throw error;
+
+  const total = data.length;
+  const totalSize = data.reduce((sum, f) => sum + (f.file_size || 0), 0);
+  
+  // Файлы старше 30 дней
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const old = data.filter(f => new Date(f.uploaded_at) < thirtyDaysAgo);
+
+  return {
+    total,
+    totalSize,
+    oldCount: old.length,
+    oldSize: old.reduce((sum, f) => sum + (f.file_size || 0), 0),
+  };
+}
+
+// ============================================
+// ФАЙЛЫ ДОМАШЕК
+// ============================================
+
+// Загрузить файл
+export async function uploadHomeworkFile(file, studentId, homeworkId) {
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${studentId}/${homeworkId}/${timestamp}_${safeName}`;
+
+  // Загружаем в Storage
+  const { error: uploadError } = await supabase.storage
+    .from('homework-files')
+    .upload(path, file, { cacheControl: '3600', upsert: false });
+
+  if (uploadError) throw uploadError;
+
+  // Записываем в БД
+  const { data, error } = await supabase
+    .from('homework_files')
+    .insert({
+      homework_id: homeworkId,
+      student_id: studentId,
+      file_path: path,
+      file_name: file.name,
+      file_size: file.size,
+      file_type: file.type,
+      uploaded_by: 'student',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Получить временную ссылку
+export async function getFileUrl(filePath, expiresIn = 3600) {
+  const { data, error } = await supabase.storage
+    .from('homework-files')
+    .createSignedUrl(filePath, expiresIn);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+// Файлы домашки
+export async function fetchHomeworkFiles(homeworkId, studentId = null) {
+  let query = supabase
+    .from('homework_files')
+    .select('*')
+    .eq('homework_id', homeworkId)
+    .order('uploaded_at', { ascending: false });
+
+  if (studentId) query = query.eq('student_id', studentId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+// Удалить файл
+export async function deleteHomeworkFile(fileId, filePath) {
+  const { error: storageError } = await supabase.storage
+    .from('homework-files')
+    .remove([filePath]);
+  if (storageError) throw storageError;
+
+  const { error } = await supabase
+    .from('homework_files')
+    .delete()
+    .eq('id', fileId);
+  if (error) throw error;
+}
+
+// ============================================
+// ФАЙЛЫ ДОМАШЕК — учитель
+// ============================================
+
+// Загрузить файл к домашке от учителя
+export async function uploadTeacherHomeworkFile(file, homeworkId) {
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `teacher/${homeworkId}/${timestamp}_${safeName}`;
+
+  // Загружаем в Storage
+  const { error: uploadError } = await supabase.storage
+    .from('homework-files')
+    .upload(path, file, { cacheControl: '3600', upsert: false });
+
+  if (uploadError) throw uploadError;
+
+  // Записываем в БД
+  const { data, error } = await supabase
+    .from('homework_files')
+    .insert({
+      homework_id: homeworkId,
+      student_id: null,  // ← учительский файл, без ученика
+      file_path: path,
+      file_name: file.name,
+      file_size: file.size,
+      file_type: file.type,
+      uploaded_by: 'teacher',
+      is_teacher_file: true,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Получить файлы, прикреплённые учителем к домашке
+export async function fetchTeacherFilesForHomework(homeworkId) {
+  const { data, error } = await supabase
+    .from('homework_files')
+    .select('*')
+    .eq('homework_id', homeworkId)
+    .eq('is_teacher_file', true);
+  if (error) throw error;
+  return data || [];
+}
+
 window.__db = { 
   fetchMessages, 
   sendTeacherMessage, 

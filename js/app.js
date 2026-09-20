@@ -4,36 +4,86 @@ import { el, toast, openModal, confirmDialog } from './ui.js';
 import './export.js';
 
 // ============================================
-// НАВИГАЦИЯ ПО ВКЛАДКАМ
+// НАВИГАЦИЯ ПО ВКЛАДКАМ (вкладки + меню)
 // ============================================
-document.querySelectorAll('.tabs button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-
-    // Подгружаем данные при переключении
-    if (btn.dataset.tab === 'students') renderStudents();
-    if (btn.dataset.tab === 'lessons') renderLessons();
-    if (btn.dataset.tab === 'settings') renderGroups();
-    if (btn.dataset.tab === 'journal') renderJournal();
-    if (btn.dataset.tab === 'reports') renderReports();
-    if (btn.dataset.tab === 'qrcodes') renderQRCodes();
-    if (btn.dataset.tab === 'passes') renderPasses();
-    if (btn.dataset.tab === 'requests') renderRequests();
-    if (btn.dataset.tab === 'announcements') renderAnnouncements();
-    if (btn.dataset.tab === 'chats') renderChats();
-    if (btn.dataset.tab === 'homework') renderHomework();
+function switchTab(tabName) {
+  document.querySelectorAll('.tabs button, .side-menu-item').forEach(b => {
+    if (b.dataset.tab === tabName) {
+      b.classList.add('active');
+    } else {
+      b.classList.remove('active');
+    }
   });
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const activeTab = document.getElementById('tab-' + tabName);
+  if (activeTab) activeTab.classList.add('active');
+
+  if (tabName === 'students') renderStudents();
+  if (tabName === 'lessons') renderLessons();
+  if (tabName === 'settings') renderGroups();
+  if (tabName === 'journal') renderJournal();
+  if (tabName === 'reports') renderReports();
+  if (tabName === 'qrcodes') renderQRCodes();
+  if (tabName === 'passes') renderPasses();
+  if (tabName === 'requests') renderRequests();
+  if (tabName === 'announcements') renderAnnouncements();
+  if (tabName === 'chats') renderChats();
+  if (tabName === 'homework') renderHomework();
+  if (tabName === 'schedule') renderSchedule();
+
+  closeMenu();
+}
+
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+document.querySelectorAll('.side-menu-item').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ============================================
+// БУРГЕР-МЕНЮ
+// ============================================
+const burgerBtn = document.getElementById('burger-btn');
+const sideMenu = document.getElementById('side-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function openMenu() {
+  sideMenu.classList.add('open');
+  menuOverlay.classList.add('show');
+  burgerBtn.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMenu() {
+  sideMenu.classList.remove('open');
+  menuOverlay.classList.remove('show');
+  burgerBtn.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+burgerBtn.addEventListener('click', () => {
+  if (sideMenu.classList.contains('open')) {
+    closeMenu();
+  } else {
+    openMenu();
+  }
+});
+
+menuOverlay.addEventListener('click', closeMenu);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeMenu();
 });
 
 // ============================================
 // SERVICE WORKER
 // ============================================
 if ('serviceWorker' in navigator) {
-   navigator.serviceWorker.register('./sw.js').catch(console.error);
- }
+  navigator.serviceWorker.register('./sw2.js').catch(console.error);
+}
 
 // ============================================
 // АУТЕНТИФИКАЦИЯ
@@ -69,9 +119,21 @@ userInfo.addEventListener('click', async () => {
 
 function showUser(user) {
   currentUser = user;
-  const name = user.user_metadata?.full_name 
+  const name = user.user_metadata?.full_name
     || user.email.split('@')[0];
+
   userInfo.innerHTML = `<span style="cursor:pointer">👤 ${name} · выйти</span>`;
+
+  const menuUserInfo = document.getElementById('menu-user-info');
+  if (menuUserInfo) {
+    menuUserInfo.innerHTML = `<span style="cursor:pointer">👤 ${name} · выйти</span>`;
+    menuUserInfo.onclick = async () => {
+      if (confirm('Выйти из системы?')) {
+        await supabase.auth.signOut();
+        location.reload();
+      }
+    };
+  }
 }
 
 supabase.auth.getSession().then(({ data }) => {
@@ -323,10 +385,11 @@ function openLessonForm(lesson = null) {
     style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
   });
   const teacherInput = el('input', {
-  placeholder: 'Кто вёл (имя преподавателя)',
-  value: lesson?.teacher_name 
-    || currentUser?.user_metadata?.full_name 
-    || (currentUser?.email?.split('@')[0] || ''),
+    placeholder: 'Кто вёл (имя преподавателя)',
+    value: lesson?.teacher_name
+      || currentUser?.user_metadata?.full_name
+      || (currentUser?.email?.split('@')[0] || ''),
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
   });
 
   form.appendChild(el('label', {}, 'Группа *'));
@@ -360,6 +423,41 @@ function openLessonForm(lesson = null) {
     renderLessons();
     toast('Сохранено ✅', 'ok');
   });
+}
+
+// ============================================
+// СТАТИСТИКА ФАЙЛОВ (для очистки)
+// ============================================
+async function loadFilesStats() {
+  const statsBox = document.getElementById('files-stats-box');
+  if (!statsBox) return;
+
+  try {
+    const stats = await db.fetchFilesStats();
+
+    const totalMB = (stats.totalSize / 1024 / 1024).toFixed(2);
+    const oldMB = (stats.oldSize / 1024 / 1024).toFixed(2);
+
+    statsBox.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.9rem;">
+        <div>
+          <div style="color:#9ca3af;font-size:0.8rem;">Всего файлов</div>
+          <div style="font-weight:bold;color:#1f2937;font-size:1.1rem;">${stats.total}</div>
+        </div>
+        <div>
+          <div style="color:#9ca3af;font-size:0.8rem;">Занято</div>
+          <div style="font-weight:bold;color:#1f2937;font-size:1.1rem;">${totalMB} МБ</div>
+        </div>
+        <div style="grid-column:1/-1;border-top:1px dashed #e5e7eb;padding-top:10px;margin-top:6px;">
+          <div style="color:#f59e0b;font-size:0.85rem;">
+            🗑️ Старше 30 дней: <b>${stats.oldCount}</b> файл(ов) · <b>${oldMB} МБ</b>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    statsBox.innerHTML = `<div style="color:#ef4444;font-size:0.9rem;">Ошибка: ${e.message}</div>`;
+  }
 }
 
 // ============================================
@@ -411,6 +509,71 @@ async function renderGroups() {
     list.appendChild(card);
   });
   root.appendChild(list);
+
+  // ============================================
+  // БЛОК: ОЧИСТКА СТАРЫХ ФАЙЛОВ
+  // ============================================
+  const cleanupBox = el('div', {
+    style: `background:#fff;padding:20px;border-radius:16px;
+            box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:24px;
+            border-left:5px solid #f59e0b;`,
+  });
+
+  cleanupBox.appendChild(el('h3', {
+    style: 'color:#f59e0b;margin-bottom:12px;font-size:1.1rem;',
+  }, '🧹 Очистка старых файлов'));
+
+  cleanupBox.appendChild(el('p', {
+    style: 'color:#6b7280;font-size:0.9rem;margin-bottom:16px;line-height:1.5;',
+  }, 'Удаляет подгруженные файлы домашних заданий старше 30 дней. Сами домашки и оценки сохраняются.'));
+
+  const statsBox = el('div', {
+    id: 'files-stats-box',
+    style: 'background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:16px;',
+  });
+  statsBox.innerHTML = '<div style="color:#9ca3af;font-size:0.9rem;">⏳ Загружаю статистику...</div>';
+  cleanupBox.appendChild(statsBox);
+
+  const cleanupBtn = el('button', {
+    style: `background:#f59e0b;color:#fff;padding:14px 24px;
+            border:none;border-radius:12px;cursor:pointer;
+            font-size:1rem;font-weight:bold;width:100%;`,
+    onclick: async () => {
+      const stats = await db.fetchFilesStats();
+      if (stats.oldCount === 0) {
+        toast('Нет файлов старше 30 дней ✅', 'ok');
+        return;
+      }
+
+      const confirmed = confirm(
+        `Удалить ${stats.oldCount} старый файл(ов)?\n\n` +
+        `Это освободит ${(stats.oldSize / 1024 / 1024).toFixed(2)} МБ.\n\n` +
+        `Домашки и оценки НЕ удаляются.`
+      );
+      if (!confirmed) return;
+
+      cleanupBtn.disabled = true;
+      cleanupBtn.textContent = '⏳ Удаляю...';
+      cleanupBtn.style.opacity = '0.6';
+
+      try {
+        const deletedCount = await db.cleanupOldFiles();
+        toast(`🧹 Удалено файлов: ${deletedCount}`, 'ok');
+        await loadFilesStats();
+      } catch (e) {
+        toast('Ошибка: ' + e.message, 'err');
+      } finally {
+        cleanupBtn.disabled = false;
+        cleanupBtn.textContent = '🧹 Запустить очистку';
+        cleanupBtn.style.opacity = '1';
+      }
+    },
+  }, '🧹 Запустить очистку');
+  cleanupBox.appendChild(cleanupBtn);
+
+  root.appendChild(cleanupBox);
+
+  loadFilesStats();
 }
 
 function openGroupForm(group = null) {
@@ -576,7 +739,7 @@ async function loadAttendance(lessonId) {
   }, '✅ Все присутствуют');
   listBox.appendChild(markAllBtn);
 
-    // --- Блок заявок от учеников ---
+  // --- Блок заявок от учеников ---
   try {
     const requests = await db.fetchRequestsForLesson(lessonId);
     if (requests.length) {
@@ -646,7 +809,6 @@ async function loadAttendance(lessonId) {
         requestsBox.appendChild(reqRow);
       });
 
-      // Кнопка «Подтвердить все»
       const pendingReqs = requests.filter(r => !r.is_approved);
       if (pendingReqs.length > 1) {
         requestsBox.appendChild(el('button', {
@@ -949,9 +1111,6 @@ async function buildReport(dateFrom, dateTo, groupId) {
 // ============================================
 // QR-КОДЫ ГРУПП
 // ============================================
-
-// Загружаем библиотеку QRCode с CDN
-
 async function renderQRCodes() {
   const root = document.getElementById('tab-qrcodes');
   root.innerHTML = '';
@@ -977,7 +1136,6 @@ async function renderQRCodes() {
 }
 
 function makeGroupQRCard(group) {
-  // Определяем базовый URL
   const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
   const studentUrl = `${baseUrl}student.html?group=${group.id}`;
 
@@ -987,12 +1145,10 @@ function makeGroupQRCard(group) {
             display:flex;flex-direction:column;align-items:center;gap:12px;`,
   });
 
-  // Заголовок группы
   card.appendChild(el('div', {
     style: 'font-size:1.2rem;font-weight:bold;color:#4f46e5;text-align:center;',
   }, `🏫 ${group.name}`));
 
-  // QR-код через qrserver.com API
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(studentUrl)}&color=4f46e5&bgcolor=ffffff&margin=10`;
 
   const qrImg = el('img', {
@@ -1002,7 +1158,6 @@ function makeGroupQRCard(group) {
   });
   card.appendChild(qrImg);
 
-  // Ссылка (для копирования)
   const urlBox = el('div', {
     style: `font-size:0.8rem;color:#666;background:#f3f4f6;
             padding:8px 12px;border-radius:8px;
@@ -1011,12 +1166,10 @@ function makeGroupQRCard(group) {
   }, studentUrl);
   card.appendChild(urlBox);
 
-  // Кнопки
   const btnRow = el('div', {
     style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;',
   });
 
-  // Кнопка "Копировать ссылку"
   btnRow.appendChild(el('button', {
     style: `background:#4f46e5;color:#fff;padding:10px 16px;
             border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;`,
@@ -1030,14 +1183,12 @@ function makeGroupQRCard(group) {
     },
   }, '📋 Копировать ссылку'));
 
-  // Кнопка "Скачать PNG"
   btnRow.appendChild(el('button', {
     style: `background:#22c55e;color:#fff;padding:10px 16px;
             border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;`,
     onclick: () => downloadQRFromUrl(qrUrl, group.name),
   }, '💾 Скачать PNG'));
 
-  // Кнопка "Открыть страницу"
   btnRow.appendChild(el('button', {
     style: `background:#f59e0b;color:#fff;padding:10px 16px;
             border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;`,
@@ -1051,7 +1202,6 @@ function makeGroupQRCard(group) {
 
 async function downloadQRFromUrl(qrUrl, groupName) {
   try {
-    // Загружаем картинку QR
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
@@ -1061,32 +1211,26 @@ async function downloadQRFromUrl(qrUrl, groupName) {
       img.src = qrUrl;
     });
 
-    // Создаём canvas с QR + названием + подписью
     const size = 600;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size + 100;
     const ctx = canvas.getContext('2d');
 
-    // Белый фон
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Название группы сверху
     ctx.fillStyle = '#4f46e5';
     ctx.font = 'bold 28px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(groupName, size / 2, 50);
 
-    // QR-код по центру
     ctx.drawImage(img, 50, 80, size - 100, size - 100);
 
-    // Подпись снизу
     ctx.fillStyle = '#666';
     ctx.font = '20px Arial';
     ctx.fillText('🤖 КЛАСС РОБОТОТЕХНИКИ', size / 2, size + 50);
 
-    // Скачиваем
     const link = document.createElement('a');
     const safeName = groupName.replace(/[^a-zа-я0-9]/gi, '_');
     link.download = `QR_${safeName}.png`;
@@ -1096,15 +1240,11 @@ async function downloadQRFromUrl(qrUrl, groupName) {
     toast('QR-код скачан! 💾', 'ok');
   } catch (e) {
     console.error('Ошибка скачивания:', e);
-    // Если CORS мешает — просто откроем QR в новой вкладке
     window.open(qrUrl, '_blank');
     toast('Скачай картинку вручную (правой кнопкой → Сохранить)', 'info');
   }
 }
 
-// ============================================
-// ЭКСПОРТ ДЛЯ ОТЛАДКИ
-// ============================================
 // ============================================
 // ПРОПУСКА УЧЕНИКОВ (персональные QR)
 // ============================================
@@ -1121,7 +1261,6 @@ async function renderPasses() {
     style: 'color:#666;margin-bottom:16px;',
   }, '🎫 Персональные QR-пропуска. Ученик сканирует → видит свои занятия и посещаемость.'));
 
-  // Фильтр по группе
   const groupFilter = el('select', {
     style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;margin-bottom:16px;width:100%;',
     onchange: () => renderPassesList(groupFilter.value),
@@ -1138,7 +1277,6 @@ async function renderPasses() {
   listBox.appendChild(el('p', {}, 'Выбери группу или покажи всех.'));
   root.appendChild(listBox);
 
-  // Показываем сразу всех
   renderPassesList('');
 }
 
@@ -1147,13 +1285,11 @@ async function renderPassesList(groupId) {
   listBox.innerHTML = '<p>Загружаю...</p>';
 
   try {
-    // Получаем все активные токены
     const tokens = await db.fetchStudentsWithTokens();
     const tokenMap = {};
     tokens.forEach(t => tokenMap[t.student_id] = t.token);
 
-    // Фильтруем учеников
-    const filtered = studentsCache.filter(s => 
+    const filtered = studentsCache.filter(s =>
       s.is_active && (!groupId || s.group_id === groupId)
     );
 
@@ -1186,19 +1322,16 @@ function makePassCard(student, group, existingToken) {
             display:flex;flex-direction:column;align-items:center;gap:10px;`,
   });
 
-  // Имя
   card.appendChild(el('div', {
     style: 'font-weight:bold;font-size:1rem;color:#4f46e5;text-align:center;',
   }, student.full_name));
 
-  // Группа
   if (group) {
     card.appendChild(el('div', {
       style: 'font-size:0.85rem;color:#666;',
     }, `🏫 ${group.name}`));
   }
 
-  // Если токена нет — показываем кнопку "Создать"
   if (!existingToken) {
     card.appendChild(el('div', {
       style: 'background:#fef3c7;color:#92400e;padding:8px 12px;border-radius:8px;font-size:0.85rem;text-align:center;',
@@ -1219,7 +1352,6 @@ function makePassCard(student, group, existingToken) {
     return card;
   }
 
-  // QR-код
   const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
   const studentUrl = `${baseUrl}student.html?token=${existingToken}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(studentUrl)}&color=4f46e5&bgcolor=ffffff&margin=10`;
@@ -1229,7 +1361,6 @@ function makePassCard(student, group, existingToken) {
     style: 'width:180px;height:180px;border:2px solid #e5e7eb;border-radius:12px;padding:6px;background:#fff;',
   }));
 
-  // Кнопки
   const btnRow = el('div', {
     style: 'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:100%;',
   });
@@ -1273,7 +1404,6 @@ async function downloadStudentPass(qrUrl, student, group) {
       img.src = qrUrl;
     });
 
-    // Карточка-пропуск: 600x800
     const w = 600;
     const h = 800;
     const canvas = document.createElement('canvas');
@@ -1281,24 +1411,20 @@ async function downloadStudentPass(qrUrl, student, group) {
     canvas.height = h;
     const ctx = canvas.getContext('2d');
 
-    // Белый фон
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
 
-    // Фиолетовая полоса сверху
     const gradient = ctx.createLinearGradient(0, 0, w, 0);
     gradient.addColorStop(0, '#4f46e5');
     gradient.addColorStop(1, '#9333ea');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, w, 100);
 
-    // Заголовок
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 32px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('🤖 КЛАСС РОБОТОТЕХНИКИ', w / 2, 60);
 
-    // ФИО
     ctx.fillStyle = '#1f2937';
     ctx.font = 'bold 28px Arial';
     const fullName = student.full_name;
@@ -1308,17 +1434,14 @@ async function downloadStudentPass(qrUrl, student, group) {
     }
     ctx.fillText(displayName, w / 2, 180);
 
-    // Группа
     if (group) {
       ctx.fillStyle = '#4f46e5';
       ctx.font = 'bold 22px Arial';
       ctx.fillText('🏫 ' + group.name, w / 2, 220);
     }
 
-    // QR-код в центре
     ctx.drawImage(img, 100, 260, 400, 400);
 
-    // Подпись
     ctx.fillStyle = '#666';
     ctx.font = '16px Arial';
     ctx.fillText('🎫 Личный пропуск ученика', w / 2, 710);
@@ -1327,7 +1450,6 @@ async function downloadStudentPass(qrUrl, student, group) {
     ctx.font = '14px Arial';
     ctx.fillText('Сканируй QR → открой свои занятия', w / 2, 740);
 
-    // Скачиваем
     const link = document.createElement('a');
     const safeName = fullName.replace(/[^a-zа-я0-9]/gi, '_');
     link.download = `Пропуск_${safeName}.png`;
@@ -1366,24 +1488,19 @@ async function renderRequests() {
       return;
     }
 
-    // Группируем по занятиям
     const byLesson = {};
     requests.forEach(r => {
       if (!byLesson[r.lesson_id]) byLesson[r.lesson_id] = [];
       byLesson[r.lesson_id].push(r);
     });
 
-    // Фильтруем занятия
     const lessonsWithRequests = lessonsCache.filter(l => byLesson[l.id]);
-
-    // Сортируем: ближайшие сверху
     lessonsWithRequests.sort((a, b) => b.date.localeCompare(a.date));
 
     lessonsWithRequests.forEach(lesson => {
       const lessonRequests = byLesson[lesson.id];
       const group = groupsCache.find(g => g.id === lesson.group_id);
 
-      // Заголовок занятия
       const lessonHeader = el('div', {
         style: `background:linear-gradient(90deg,#4f46e5,#9333ea);
                 color:#fff;padding:12px 16px;border-radius:12px;
@@ -1399,7 +1516,6 @@ async function renderRequests() {
       }
       listBox.appendChild(lessonHeader);
 
-      // Заявки
       lessonRequests.forEach(req => {
         listBox.appendChild(makeRequestCard(req, lesson, group));
       });
@@ -1450,7 +1566,6 @@ function makeRequestCard(request, lesson, group) {
   infoRow.appendChild(badge);
   card.appendChild(infoRow);
 
-  // Кнопки (если не подтверждено)
   if (!request.is_approved) {
     const btnRow = el('div', {
       style: 'display:flex;gap:8px;margin-top:12px;',
@@ -1512,13 +1627,11 @@ async function renderAnnouncements() {
     style: 'color:#666;margin-bottom:16px;',
   }, '📢 Объявления для учеников. Можно адресовать всем, группе или лично.'));
 
-  // Кнопка «Создать»
   root.appendChild(el('button', {
     style: 'background:#22c55e;color:#fff;padding:12px 20px;border:none;border-radius:12px;font-size:1rem;cursor:pointer;margin-bottom:16px;',
     onclick: () => openAnnouncementForm(),
   }, '➕ Создать объявление'));
 
-  // Список
   const listBox = el('div', { id: 'announcements-list' });
   listBox.appendChild(el('p', {}, 'Загружаю...'));
   root.appendChild(listBox);
@@ -1673,9 +1786,9 @@ function updateTargetOptions(type, select) {
 // ============================================
 // ЧАТЫ (для учителя)
 // ============================================
-let chatRooms = {};           // { roomKey: { name, type, id, unread } }
-let currentChatRoom = null;   // 'global' или 'group:UUID'
-let chatChannel = null;       // Realtime-канал
+let chatRooms = {};
+let currentChatRoom = null;
+let chatChannel = null;
 
 async function renderChats() {
   const root = document.getElementById('tab-chats');
@@ -1685,10 +1798,8 @@ async function renderChats() {
     style: 'color:#666;margin-bottom:16px;',
   }, '💬 Чаты с учениками. Выбери комнату слева — читай и отвечай.'));
 
-  // Собираем список комнат
   chatRooms = {};
 
-  // Общий чат
   chatRooms['global'] = {
     key: 'global',
     name: '🌍 Общий чат',
@@ -1696,7 +1807,6 @@ async function renderChats() {
     id: null,
   };
 
-  // Чаты групп
   groupsCache.forEach(g => {
     const key = 'group:' + g.id;
     chatRooms[key] = {
@@ -1707,7 +1817,6 @@ async function renderChats() {
     };
   });
 
-  // Подсчёт непрочитанных
   for (const key in chatRooms) {
     try {
       const unread = await db.getTeacherUnreadCount(key);
@@ -1717,12 +1826,10 @@ async function renderChats() {
     }
   }
 
-  // Двухколоночный layout
   const layout = el('div', {
     style: 'display:grid;grid-template-columns:280px 1fr;gap:16px;min-height:600px;',
   });
 
-  // Левая колонка — список
   const sidebar = el('div', {
     style: 'background:#fff;border-radius:12px;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);overflow-y:auto;max-height:700px;',
   });
@@ -1734,7 +1841,6 @@ async function renderChats() {
     sidebar.appendChild(makeRoomListItem(room));
   });
 
-  // Правая колонка — чат
   const chatPanel = el('div', {
     id: 'teacher-chat-panel',
     style: 'background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;min-height:600px;max-height:700px;',
@@ -1779,11 +1885,6 @@ async function openTeacherRoom(roomKey) {
   currentChatRoom = roomKey;
   const room = chatRooms[roomKey];
 
-  // Обновляем подсветку в списке
-  document.querySelectorAll('#tab-chats [onclick]').forEach(el => {
-    el.style.background = '';
-  });
-  // Проще — перерисовать список
   const root = document.getElementById('tab-chats');
   const sidebar = root.querySelector('div[style*="grid-template-columns"] > div');
   if (sidebar) {
@@ -1797,11 +1898,9 @@ async function openTeacherRoom(roomKey) {
     sidebar.parentNode.replaceChild(newSidebar, sidebar);
   }
 
-  // Рендерим панель чата
   const panel = document.getElementById('teacher-chat-panel');
   panel.innerHTML = '';
 
-  // Шапка
   const header = el('div', {
     style: `background:linear-gradient(90deg,#4f46e5,#9333ea);color:#fff;
             padding:14px 18px;border-radius:12px 12px 0 0;
@@ -1810,7 +1909,6 @@ async function openTeacherRoom(roomKey) {
   header.appendChild(el('div', { style: 'font-weight:bold;' }, room.name));
   panel.appendChild(header);
 
-  // Сообщения
   const messagesBox = el('div', {
     id: 'teacher-messages',
     style: 'flex:1;overflow-y:auto;padding:16px;background:#f9fafb;display:flex;flex-direction:column;gap:10px;',
@@ -1818,7 +1916,6 @@ async function openTeacherRoom(roomKey) {
   messagesBox.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Загружаю...</div>';
   panel.appendChild(messagesBox);
 
-  // Форма
   const form = el('div', {
     style: 'padding:12px;background:#fff;border-top:2px solid #e5e7eb;display:flex;gap:8px;border-radius:0 0 12px 12px;',
   });
@@ -1840,11 +1937,9 @@ async function openTeacherRoom(roomKey) {
   form.appendChild(sendBtn);
   panel.appendChild(form);
 
-  // Загружаем сообщения
   await loadTeacherMessages(room);
   setupTeacherRealtime(room);
 
-  // Отправка по Enter
   input.onkeydown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1856,11 +1951,9 @@ async function openTeacherRoom(roomKey) {
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   };
 
-  // Отмечаем прочитанным
   await db.markRoomReadTeacher(room.key);
   room.unread = 0;
 
-  // Обновляем список (счётчик)
   const roomItem = Object.values(chatRooms).find(r => r.key === room.key);
   if (roomItem) roomItem.unread = 0;
 }
@@ -1903,7 +1996,7 @@ function makeTeacherMessageEl(msg) {
 
   const name = el('div', {
     style: 'font-size:0.75rem;color:#9ca3af;margin-bottom:3px;padding:0 8px;',
-  }, (isTeacher ? `👨‍🏫 ${msg.author_name}` : `👤 ${msg.author_name}`) 
+  }, (isTeacher ? `👨‍🏫 ${msg.author_name}` : `👤 ${msg.author_name}`)
      + (isDeleted ? ' 🗑️ (удалено)' : ''));
   wrapper.appendChild(name);
 
@@ -1926,16 +2019,15 @@ function makeTeacherMessageEl(msg) {
   const footer = el('div', {
     style: 'display:flex;gap:8px;align-items:center;font-size:0.7rem;color:#9ca3af;margin-top:3px;padding:0 8px;',
   });
-  
-  footer.appendChild(el('span', {}, 
+
+  footer.appendChild(el('span', {},
     new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })));
-  
+
   if (msg.edited_at) {
     footer.appendChild(el('span', { style: 'font-style:italic;' }, '(изменено)'));
   }
 
   if (isDeleted) {
-    // Кнопка «Восстановить»
     footer.appendChild(el('span', {
       style: 'cursor:pointer;color:#22c55e;font-size:0.75rem;',
       title: 'Восстановить',
@@ -1951,7 +2043,6 @@ function makeTeacherMessageEl(msg) {
       },
     }, '♻️'));
   } else {
-    // Кнопка «Удалить»
     footer.appendChild(el('span', {
       style: 'cursor:pointer;color:#ef4444;font-size:0.75rem;',
       title: 'Удалить сообщение',
@@ -1986,7 +2077,6 @@ async function sendTeacherMsg() {
     await db.sendTeacherMessage(room.type, room.id, text, teacherName);
     input.value = '';
     input.style.height = 'auto';
-    // Сообщение придёт через Realtime
   } catch (e) {
     alert('Ошибка отправки: ' + e.message);
   } finally {
@@ -1996,14 +2086,12 @@ async function sendTeacherMsg() {
 }
 
 function setupTeacherRealtime(room) {
-  // Отписываемся от старого
   if (chatChannel) {
     db.unsubscribeFromMessages(chatChannel);
     chatChannel = null;
   }
 
   chatChannel = db.subscribeToMessages(room.type, room.id, (newMsg) => {
-    // Проверяем, что это наша комната
     if (room.type === 'global' && newMsg.room_type !== 'global') return;
     if (room.type === 'group' && newMsg.room_id !== room.id) return;
     if (newMsg.is_deleted) return;
@@ -2011,8 +2099,6 @@ function setupTeacherRealtime(room) {
     const box = document.getElementById('teacher-messages');
     if (!box) return;
 
-    // Проверяем, нет ли уже (чтобы не дублировать своё)
-    // Проще всего — перезагрузить сообщения
     loadTeacherMessages(room);
   });
 }
@@ -2033,7 +2119,6 @@ async function renderHomework() {
     onclick: () => openHomeworkForm(),
   }, '➕ Создать домашку'));
 
-  // Список домашек
   const listBox = el('div', { id: 'homework-list' });
   listBox.appendChild(el('p', {}, 'Загружаю...'));
   root.appendChild(listBox);
@@ -2068,7 +2153,6 @@ async function makeHomeworkCard(hw) {
             border-left:5px solid #4f46e5;`,
   });
 
-  // Заголовок
   const header = el('div', {
     style: 'display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;',
   });
@@ -2093,7 +2177,7 @@ async function makeHomeworkCard(hw) {
     style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.9rem;',
     onclick: async () => {
       if (!confirm(`Удалить домашку «${hw.title}»? Все сдачи тоже удалятся.`)) return;
-      const { error } = await supabase.from('homework').delete().eq('id', hw.id);
+  const { error } = await supabase.from('homework').delete().eq('id', hw.id);
       if (error) { alert('Ошибка: ' + error.message); return; }
       toast('Удалено', 'ok');
       renderHomework();
@@ -2103,7 +2187,6 @@ async function makeHomeworkCard(hw) {
 
   card.appendChild(header);
 
-  // Сдачи — по ученикам
   const submissionsBox = el('div', {
     style: 'background:#f9fafb;border-radius:10px;padding:12px;',
   });
@@ -2111,33 +2194,114 @@ async function makeHomeworkCard(hw) {
     style: 'font-weight:bold;color:#4f46e5;font-size:0.95rem;margin-bottom:10px;',
   }, '👥 Сдачи учеников'));
 
-  // Загружаем сдачи
   const { data: submissions } = await supabase
     .from('homework_submissions')
     .select('*')
     .eq('homework_id', hw.id);
 
-  const subMap = {};
+    // Файлы, прикреплённые учителем
+  const { data: teacherFiles } = await supabase
+    .from('homework_files')
+    .select('*')
+    .eq('homework_id', hw.id)
+    .eq('is_teacher_file', true);
+
+    const subMap = {};
   (submissions || []).forEach(s => subMap[s.student_id] = s);
 
-  // Список учеников (все активные)
-  const students = studentsCache.filter(s => s.is_active);
+  // Все активные ученики группы
+  const allStudents = studentsCache.filter(s => s.is_active);
 
-  if (!students.length) {
+  // Разделяем: кто сдал и кто нет
+  const submittedStudents = allStudents.filter(s => subMap[s.id]);
+  const notSubmittedCount = allStudents.length - submittedStudents.length;
+
+  // Обновляем заголовок блока
+  submissionsBox.innerHTML = '';
+  submissionsBox.appendChild(el('div', {
+    style: 'font-weight:bold;color:#4f46e5;font-size:0.95rem;margin-bottom:10px;',
+  }, `👥 Сдали: ${submittedStudents.length}${notSubmittedCount > 0 ? ` · не сдало: ${notSubmittedCount}` : ''}`));
+
+  if (!allStudents.length) {
     submissionsBox.appendChild(el('p', { style: 'color:#9ca3af;' }, 'Нет активных учеников'));
+  } else if (!submittedStudents.length) {
+    submissionsBox.appendChild(el('p', {
+      style: 'color:#9ca3af;font-size:0.9rem;text-align:center;padding:12px;',
+    }, '😕 Пока никто не сдал'));
   } else {
-    students.forEach(student => {
-      const sub = subMap[student.id];
-      submissionsBox.appendChild(makeStudentSubmissionRow(hw, student, sub));
+    // Сортируем: сначала проверенные, потом ждущие
+    submittedStudents.sort((a, b) => {
+      const sa = subMap[a.id], sb = subMap[b.id];
+      if (sa.is_approved && !sb.is_approved) return -1;
+      if (!sa.is_approved && sb.is_approved) return 1;
+      return a.full_name.localeCompare(b.full_name);
     });
+
+    for (const student of submittedStudents) {
+      const sub = subMap[student.id];
+      submissionsBox.appendChild(await makeStudentSubmissionRow(hw, student, sub));
+    }
   }
 
   card.appendChild(submissionsBox);
 
+    // Блок материалов от учителя
+  if (teacherFiles && teacherFiles.length) {
+    const tFilesBox = el('div', {
+      style: 'background:#eef2ff;border-radius:10px;padding:12px;margin-top:12px;',
+    });
+    tFilesBox.appendChild(el('div', {
+      style: 'font-weight:bold;color:#4f46e5;font-size:0.95rem;margin-bottom:10px;',
+    }, `📚 Материалы (${teacherFiles.length})`));
+
+    for (const f of teacherFiles) {
+      const row = el('div', {
+        style: 'display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-radius:8px;margin-bottom:6px;',
+      });
+
+      row.appendChild(el('div', {
+        style: 'font-size:0.9rem;flex:1;',
+      }, `📄 ${f.file_name}`));
+
+      const btnBox = el('div', { style: 'display:flex;gap:6px;' });
+
+      btnBox.appendChild(el('button', {
+        style: 'background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
+        onclick: async () => {
+          try {
+            const url = await db.getFileUrl(f.file_path);
+            window.open(url, '_blank');
+          } catch (e) {
+            alert('Ошибка: ' + e.message);
+          }
+        },
+      }, '📥 Скачать'));
+
+      btnBox.appendChild(el('button', {
+        style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
+        onclick: async () => {
+          if (!confirm(`Удалить файл «${f.file_name}»?`)) return;
+          try {
+            await db.deleteHomeworkFile(f.id, f.file_path);
+            toast('Удалено', 'ok');
+            renderHomework();
+          } catch (e) {
+            alert('Ошибка: ' + e.message);
+          }
+        },
+      }, '🗑️'));
+
+      row.appendChild(btnBox);
+      tFilesBox.appendChild(row);
+    }
+
+    card.appendChild(tFilesBox);
+  }
+
   return card;
 }
 
-function makeStudentSubmissionRow(hw, student, submission) {
+async function makeStudentSubmissionRow(hw, student, submission) {
   const row = el('div', {
     style: `display:flex;justify-content:space-between;align-items:center;gap:8px;
             padding:8px 10px;background:#fff;border-radius:8px;margin-bottom:6px;`,
@@ -2163,12 +2327,32 @@ function makeStudentSubmissionRow(hw, student, submission) {
       style: 'font-size:0.8rem;color:#9ca3af;',
     }, '— не сдал'));
   }
+
+  // Загружаем файлы ученика (только если есть сдача)
+  if (submission) {
+    try {
+      const { data: files } = await supabase
+        .from('homework_files')
+        .select('*')
+        .eq('homework_id', hw.id)
+        .eq('student_id', student.id);
+
+      if (files && files.length) {
+        const filesBtn = el('button', {
+          style: 'background:#4f46e5;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.8rem;margin-top:4px;',
+          onclick: () => showFilesModal(files, student.full_name),
+        }, `📎 ${files.length} файл(ов)`);
+        info.appendChild(filesBtn);
+      }
+    } catch (e) {
+      console.error('Ошибка файлов:', e);
+    }
+  }
+
   row.appendChild(info);
 
-  // Учитель может поставить балл (даже без сдачи — сам отметит)
   const btnBox = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
 
-  // Кнопка «Поставить балл»
   btnBox.appendChild(el('button', {
     style: `background:${submission?.is_approved ? '#f59e0b' : '#22c55e'};color:#fff;border:none;
             padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;`,
@@ -2206,7 +2390,6 @@ function makeStudentSubmissionRow(hw, student, submission) {
     },
   }, submission?.is_approved ? '✏️ Изменить' : '✅ Поставить балл'));
 
-  // Кнопка «Удалить сдачу»
   if (submission) {
     btnBox.appendChild(el('button', {
       style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
@@ -2227,6 +2410,60 @@ function makeStudentSubmissionRow(hw, student, submission) {
   return row;
 }
 
+async function showFilesModal(files, studentName) {
+  const modal = el('div', {
+    style: `position:fixed;inset:0;background:rgba(0,0,0,.6);
+            z-index:9999;display:flex;align-items:center;justify-content:center;
+            padding:16px;`,
+  });
+
+  const box = el('div', {
+    style: `background:#fff;border-radius:20px;padding:24px;
+            max-width:500px;width:100%;`,
+  });
+
+  box.appendChild(el('h3', {
+    style: 'color:#4f46e5;margin-bottom:16px;',
+  }, `📎 Файлы от ${studentName}`));
+
+  for (const f of files) {
+    const row = el('div', {
+      style: `display:flex;justify-content:space-between;align-items:center;
+              padding:10px;background:#f9fafb;border-radius:10px;margin-bottom:8px;`,
+    });
+
+    row.appendChild(el('div', {
+      style: 'font-size:0.9rem;flex:1;',
+    }, `📄 ${f.file_name}`));
+
+    row.appendChild(el('button', {
+      style: 'background:#4f46e5;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
+      onclick: async () => {
+        try {
+          const url = await db.getFileUrl(f.file_path);
+          window.open(url, '_blank');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      },
+    }, '📥 Скачать'));
+
+    box.appendChild(row);
+  }
+
+  box.appendChild(el('button', {
+    style: 'background:#e5e7eb;color:#1f2937;border:none;padding:12px 24px;border-radius:12px;cursor:pointer;width:100%;margin-top:8px;',
+    onclick: () => modal.remove(),
+  }, 'Закрыть'));
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.remove();
+  };
+}
+
 function openHomeworkForm() {
   const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
 
@@ -2245,36 +2482,277 @@ function openHomeworkForm() {
     style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
   });
 
+  // Блок прикрепления файлов
+  const filesBox = el('div', {
+    style: 'background:#f9fafb;border-radius:10px;padding:12px;',
+  });
+  filesBox.appendChild(el('div', {
+    style: 'font-weight:bold;color:#4f46e5;font-size:0.95rem;margin-bottom:8px;',
+  }, '📎 Материалы к заданию (необязательно)'));
+
+  const fileInput = el('input', {
+    type: 'file',
+    multiple: true,
+    accept: '*/*',
+    style: 'display:none;',
+  });
+
+  const selectedFilesDiv = el('div', {
+    style: 'font-size:0.9rem;color:#666;margin-bottom:8px;',
+  });
+
+  let selectedFiles = [];
+
+  const chooseBtn = el('button', {
+    type: 'button',
+    style: 'background:#4f46e5;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:0.95rem;width:100%;',
+    onclick: () => fileInput.click(),
+  }, '📁 Выбрать файлы');
+
+  fileInput.onchange = () => {
+    const files = Array.from(fileInput.files);
+    if (selectedFiles.length + files.length > 5) {
+      alert('Максимум 5 файлов');
+      return;
+    }
+    for (const f of files) {
+      if (f.size > 50 * 1024 * 1024) {
+        alert('Файл слишком большой (макс 50 МБ): ' + f.name);
+        return;
+      }
+      selectedFiles.push(f);
+    }
+    renderSelected();
+  };
+
+  function renderSelected() {
+    selectedFilesDiv.innerHTML = '';
+    if (!selectedFiles.length) return;
+    selectedFiles.forEach((f, idx) => {
+      const row = el('div', {
+        style: 'display:flex;justify-content:space-between;align-items:center;padding:4px 0;',
+      });
+      row.appendChild(el('span', {}, `📄 ${f.name} (${(f.size / 1024).toFixed(1)} КБ)`));
+      row.appendChild(el('span', {
+        style: 'cursor:pointer;color:#ef4444;font-weight:bold;',
+        onclick: () => {
+          selectedFiles.splice(idx, 1);
+          renderSelected();
+        },
+      }, '✕'));
+      selectedFilesDiv.appendChild(row);
+    });
+  }
+
+  filesBox.appendChild(fileInput);
+  filesBox.appendChild(chooseBtn);
+  filesBox.appendChild(selectedFilesDiv);
+
   form.appendChild(el('label', {}, 'Название *'));
   form.appendChild(titleInput);
   form.appendChild(el('label', {}, 'Описание'));
   form.appendChild(descInput);
   form.appendChild(el('label', {}, 'Срок сдачи'));
   form.appendChild(dueInput);
+  form.appendChild(filesBox);
 
   openModal('📚 Новая домашка', form, async () => {
     if (!titleInput.value.trim()) throw new Error('Введи название');
 
-    const { error } = await supabase
+    // 1. Создаём домашку
+    const { data: newHw, error } = await supabase
       .from('homework')
       .insert({
         title: titleInput.value.trim(),
         description: descInput.value.trim() || null,
         due_date: dueInput.value || null,
-      });
+      })
+      .select()
+      .single();
 
     if (error) throw error;
+
+    // 2. Загружаем файлы (если выбраны)
+    if (selectedFiles.length) {
+      for (const file of selectedFiles) {
+        await db.uploadTeacherHomeworkFile(file, newHw.id);
+      }
+    }
+
     toast('Домашка создана! 📚', 'ok');
     renderHomework();
   });
 }
 
+// ============================================
+// РАСПИСАНИЕ НА НЕДЕЛЮ
+// ============================================
+let currentWeekStart = null;  // Понедельник текущей недели
+
+function getMondayOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();  // 0=вс, 1=пн, ..., 6=сб
+  const diff = day === 0 ? -6 : 1 - day;  // Сдвиг до понедельника
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+async function renderSchedule() {
+  const root = document.getElementById('tab-schedule');
+  root.innerHTML = '';
+
+  // Устанавливаем понедельник текущей недели (если ещё не установлен)
+  if (!currentWeekStart) {
+    currentWeekStart = getMondayOfWeek(new Date());
+  }
+
+  // Заголовок с навигацией
+  const header = el('div', {
+    style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;',
+  });
+
+  header.appendChild(el('button', {
+    style: 'background:#4f46e5;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
+    onclick: () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      renderSchedule();
+    },
+  }, '← Прошлая'));
+
+  const dateEnd = new Date(currentWeekStart);
+  dateEnd.setDate(dateEnd.getDate() + 6);
+  const dateStr = `${currentWeekStart.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} — ${dateEnd.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+
+  header.appendChild(el('div', {
+    style: 'font-weight:bold;font-size:1.1rem;color:#4f46e5;text-align:center;flex:1;',
+  }, `📅 ${dateStr}`));
+
+  header.appendChild(el('button', {
+    style: 'background:#4f46e5;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
+    onclick: () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      renderSchedule();
+    },
+  }, 'Следующая →'));
+
+  // Кнопка «На текущую»
+  if (currentWeekStart.getTime() !== getMondayOfWeek(new Date()).getTime()) {
+    header.appendChild(el('button', {
+      style: 'background:#22c55e;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
+      onclick: () => {
+        currentWeekStart = getMondayOfWeek(new Date());
+        renderSchedule();
+      },
+    }, '📍 На текущую'));
+  }
+
+  root.appendChild(header);
+
+  // Загружаем занятия
+  const allLessons = await db.fetchLessons();
+
+  // Дни недели (Пн-Сб)
+  const days = [
+    { key: 1, name: 'Пн', full: 'Понедельник' },
+    { key: 2, name: 'Вт', full: 'Вторник' },
+    { key: 3, name: 'Ср', full: 'Среда' },
+    { key: 4, name: 'Чт', full: 'Четверг' },
+    { key: 5, name: 'Пт', full: 'Пятница' },
+    { key: 6, name: 'Сб', full: 'Суббота' },
+  ];
+
+  // Фильтруем занятия по неделе
+  const weekEnd = new Date(currentWeekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const weekLessons = allLessons.filter(l => {
+    const d = new Date(l.date + 'T00:00:00');
+    return d >= currentWeekStart && d <= weekEnd;
+  });
+
+  // Таблица
+  const table = el('div', {
+    style: 'overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
+  });
+
+  // Шапка таблицы
+  const headerRow = el('div', {
+    style: 'display:grid;grid-template-columns:120px repeat(6, 1fr);gap:1px;background:#e5e7eb;min-width:900px;',
+  });
+
+  headerRow.appendChild(el('div', {
+    style: 'padding:12px;background:#4f46e5;color:#fff;font-weight:bold;',
+  }, 'Группа'));
+
+  days.forEach(day => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + day.key - 1);
+    const dateNum = d.getDate();
+    const isToday = d.toDateString() === new Date().toDateString();
+
+    headerRow.appendChild(el('div', {
+      style: `padding:12px;background:${isToday ? '#22c55e' : '#4f46e5'};color:#fff;font-weight:bold;text-align:center;`,
+    }, `${day.name} ${dateNum}`));
+  });
+
+  table.appendChild(headerRow);
+
+  // Строки по группам
+  groupsCache.forEach(group => {
+    const row = el('div', {
+      style: 'display:grid;grid-template-columns:120px repeat(6, 1fr);gap:1px;background:#e5e7eb;min-width:900px;',
+    });
+
+    // Название группы
+    row.appendChild(el('div', {
+      style: 'padding:12px;background:#f9fafb;font-weight:bold;font-size:0.9rem;',
+    }, group.name));
+
+    // Ячейки по дням
+    days.forEach(day => {
+      const d = new Date(currentWeekStart);
+      d.setDate(d.getDate() + day.key - 1);
+      const dateStr = d.toISOString().slice(0, 10);
+
+      const dayLessons = weekLessons.filter(l => 
+        l.group_id === group.id && l.date === dateStr
+      );
+
+      const cell = el('div', {
+        style: 'padding:8px;background:#fff;min-height:60px;font-size:0.85rem;',
+      });
+
+      if (dayLessons.length) {
+        dayLessons.forEach(l => {
+          cell.appendChild(el('div', {
+            style: 'background:#eef2ff;border-left:3px solid #4f46e5;padding:6px 8px;border-radius:6px;margin-bottom:4px;',
+          }, l.topic || '— без темы —'));
+        });
+      }
+
+      row.appendChild(cell);
+    });
+
+    table.appendChild(row);
+  });
+
+  root.appendChild(table);
+
+  // Подсказка если пусто
+  if (!weekLessons.length) {
+    root.appendChild(el('p', {
+      style: 'text-align:center;color:#9ca3af;margin-top:20px;',
+    }, '😕 На этой неделе занятий нет. Добавь занятия в разделе «📅 Занятия».'));
+  }
+}
+
 // Экспорт для отладки
-window.__app = { 
-  groupsCache, 
-  studentsCache, 
-  lessonsCache, 
-  renderJournal, 
+window.__app = {
+  groupsCache,
+  studentsCache,
+  lessonsCache,
+  renderJournal,
   renderReports,
   renderQRCodes,
   renderPasses,
@@ -2282,4 +2760,5 @@ window.__app = {
   renderAnnouncements,
   renderChats,
   renderHomework,
+  renderSchedule,
 };
