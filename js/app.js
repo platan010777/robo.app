@@ -2587,27 +2587,33 @@ function openHomeworkForm() {
 // ============================================
 // РАСПИСАНИЕ НА НЕДЕЛЮ
 // ============================================
-let currentWeekStart = null;  // Понедельник текущей недели
+let currentWeekStart = null;
 
 function getMondayOfWeek(date) {
-  const d = new Date(date);
-  const day = d.getDay();  // 0=вс, 1=пн, ..., 6=сб
-  const diff = day === 0 ? -6 : 1 - day;  // Сдвиг до понедельника
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 async function renderSchedule() {
   const root = document.getElementById('tab-schedule');
   root.innerHTML = '';
 
-  // Устанавливаем понедельник текущей недели (если ещё не установлен)
   if (!currentWeekStart) {
     currentWeekStart = getMondayOfWeek(new Date());
   }
 
-  // Заголовок с навигацией
+  // Заголовок
   const header = el('div', {
     style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;',
   });
@@ -2620,9 +2626,10 @@ async function renderSchedule() {
     },
   }, '← Прошлая'));
 
-  const dateEnd = new Date(currentWeekStart);
-  dateEnd.setDate(dateEnd.getDate() + 6);
-  const dateStr = `${currentWeekStart.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} — ${dateEnd.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+  const friday = new Date(currentWeekStart);
+  friday.setDate(friday.getDate() + 4);
+
+  const dateStr = `${currentWeekStart.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} — ${friday.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 
   header.appendChild(el('div', {
     style: 'font-weight:bold;font-size:1.1rem;color:#4f46e5;text-align:center;flex:1;',
@@ -2636,8 +2643,8 @@ async function renderSchedule() {
     },
   }, 'Следующая →'));
 
-  // Кнопка «На текущую»
-  if (currentWeekStart.getTime() !== getMondayOfWeek(new Date()).getTime()) {
+  const mondayThisWeek = getMondayOfWeek(new Date());
+  if (currentWeekStart.getTime() !== mondayThisWeek.getTime()) {
     header.appendChild(el('button', {
       style: 'background:#22c55e;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
       onclick: () => {
@@ -2649,36 +2656,26 @@ async function renderSchedule() {
 
   root.appendChild(header);
 
-  // Загружаем занятия
   const allLessons = await db.fetchLessons();
 
-  // Дни недели (Пн-Сб)
+  // ЖЁСТКО: 5 дней, offset ОТ 0
   const days = [
-    { key: 1, name: 'Пн', full: 'Понедельник' },
-    { key: 2, name: 'Вт', full: 'Вторник' },
-    { key: 3, name: 'Ср', full: 'Среда' },
-    { key: 4, name: 'Чт', full: 'Четверг' },
-    { key: 5, name: 'Пт', full: 'Пятница' },
-    { key: 6, name: 'Сб', full: 'Суббота' },
+    { name: 'Пн', offset: 0 },
+    { name: 'Вт', offset: 1 },
+    { name: 'Ср', offset: 2 },
+    { name: 'Чт', offset: 3 },
+    { name: 'Пт', offset: 4 },
   ];
 
-  // Фильтруем занятия по неделе
-  const weekEnd = new Date(currentWeekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
+  const todayStr = formatLocalDate(new Date());
 
-  const weekLessons = allLessons.filter(l => {
-    const d = new Date(l.date + 'T00:00:00');
-    return d >= currentWeekStart && d <= weekEnd;
-  });
-
-  // Таблица
   const table = el('div', {
     style: 'overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
   });
 
-  // Шапка таблицы
+  // Шапка
   const headerRow = el('div', {
-    style: 'display:grid;grid-template-columns:120px repeat(6, 1fr);gap:1px;background:#e5e7eb;min-width:900px;',
+    style: 'display:grid;grid-template-columns:120px repeat(5, 1fr);gap:1px;background:#e5e7eb;min-width:800px;',
   });
 
   headerRow.appendChild(el('div', {
@@ -2687,13 +2684,13 @@ async function renderSchedule() {
 
   days.forEach(day => {
     const d = new Date(currentWeekStart);
-    d.setDate(d.getDate() + day.key - 1);
-    const dateNum = d.getDate();
-    const isToday = d.toDateString() === new Date().toDateString();
+    d.setDate(d.getDate() + day.offset);
+    const dateStr = formatLocalDate(d);
+    const isToday = dateStr === todayStr;
 
     headerRow.appendChild(el('div', {
       style: `padding:12px;background:${isToday ? '#22c55e' : '#4f46e5'};color:#fff;font-weight:bold;text-align:center;`,
-    }, `${day.name} ${dateNum}`));
+    }, `${day.name} ${d.getDate()}`));
   });
 
   table.appendChild(headerRow);
@@ -2701,21 +2698,19 @@ async function renderSchedule() {
   // Строки по группам
   groupsCache.forEach(group => {
     const row = el('div', {
-      style: 'display:grid;grid-template-columns:120px repeat(6, 1fr);gap:1px;background:#e5e7eb;min-width:900px;',
+      style: 'display:grid;grid-template-columns:120px repeat(5, 1fr);gap:1px;background:#e5e7eb;min-width:800px;',
     });
 
-    // Название группы
     row.appendChild(el('div', {
       style: 'padding:12px;background:#f9fafb;font-weight:bold;font-size:0.9rem;',
     }, group.name));
 
-    // Ячейки по дням
     days.forEach(day => {
       const d = new Date(currentWeekStart);
-      d.setDate(d.getDate() + day.key - 1);
-      const dateStr = d.toISOString().slice(0, 10);
+      d.setDate(d.getDate() + day.offset);
+      const dateStr = formatLocalDate(d);
 
-      const dayLessons = weekLessons.filter(l => 
+      const dayLessons = allLessons.filter(l =>
         l.group_id === group.id && l.date === dateStr
       );
 
@@ -2739,12 +2734,14 @@ async function renderSchedule() {
 
   root.appendChild(table);
 
-  // Подсказка если пусто
-  if (!weekLessons.length) {
-    root.appendChild(el('p', {
-      style: 'text-align:center;color:#9ca3af;margin-top:20px;',
-    }, '😕 На этой неделе занятий нет. Добавь занятия в разделе «📅 Занятия».'));
-  }
+  // Отладка
+  console.log('📅 currentWeekStart:', formatLocalDate(currentWeekStart));
+  console.log('📅 Дни недели:', days.map(d => {
+    const dd = new Date(currentWeekStart);
+    dd.setDate(dd.getDate() + d.offset);
+    return `${d.name}=${formatLocalDate(dd)}`;
+  }));
+  console.log('📅 Занятий 21.09:', allLessons.filter(l => l.date === '2026-09-21').length);
 }
 
 // Экспорт для отладки

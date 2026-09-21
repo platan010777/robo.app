@@ -66,19 +66,18 @@ async function loadScheduleTab() {
     container.innerHTML = '';
 
     const days = [
-      { key: 1, name: 'Понедельник' },
-      { key: 2, name: 'Вторник' },
-      { key: 3, name: 'Среда' },
-      { key: 4, name: 'Четверг' },
-      { key: 5, name: 'Пятница' },
-      { key: 6, name: 'Суббота' },
+        { name: 'Понедельник', offset: 0 },
+        { name: 'Вторник', offset: 1 },
+        { name: 'Среда', offset: 2 },
+        { name: 'Четверг', offset: 3 },
+        { name: 'Пятница', offset: 4 },
     ];
 
     let hasAny = false;
 
     days.forEach(dItem => {
-      const d = new Date(monday);
-      d.setDate(d.getDate() + dItem.key - 1);
+    const d = new Date(monday);
+  d.setDate(d.getDate() + dItem.offset);
       const dateStr = d.toISOString().slice(0, 10);
       const isToday = d.toDateString() === new Date().toDateString();
 
@@ -281,6 +280,9 @@ async function loadLessonsTab() {
 // ============================================
 // ВКЛАДКА "МОЙ ДОСТУП" (ученик)
 // ============================================
+// ============================================
+// ВКЛАДКА "МОЙ ДОСТУП"
+// ============================================
 async function loadAccessTab() {
   const container = document.getElementById('access-content');
   if (!container) return;
@@ -289,32 +291,132 @@ async function loadAccessTab() {
 
   const fullUrl = window.location.href;
 
-  // === БЛОК: QR-КОД ===
-  const qrBox = document.createElement('div');
-  qrBox.style.cssText = `
-    background: #fff;
+  // ============================================
+  // 1. ДОСТУП ДЛЯ РОДИТЕЛЯ (первый блок!)
+  // ============================================
+  const parentBox = document.createElement('div');
+  parentBox.style.cssText = `
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.08);
-    text-align: center;
+    border-left: 5px solid #ec4899;
   `;
 
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullUrl)}&color=4f46e5&bgcolor=ffffff&margin=10`;
-
-  qrBox.innerHTML = `
-    <div style="font-size:1.1rem;font-weight:bold;color:#4f46e5;margin-bottom:12px;">
-      📱 Мой QR-код
+  parentBox.innerHTML = `
+    <div style="font-size:1.05rem;font-weight:bold;color:#be185d;margin-bottom:8px;">
+      👨‍👩‍👧 Доступ для родителя
     </div>
-    <div style="font-size:0.85rem;color:#6b7280;margin-bottom:16px;">
-      Покажи этот QR — быстро войти в личный кабинет с телефона
+    <div style="font-size:0.85rem;color:#6b7280;margin-bottom:14px;">
+      Создай ссылку — отправь родителю. Он увидит твою посещаемость и домашки.
     </div>
-    <img src="${qrUrl}" alt="Мой QR-код" style="width:200px;height:200px;border:2px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff;">
+    <div id="parent-link-result"></div>
   `;
 
-  container.appendChild(qrBox);
+  container.appendChild(parentBox);
 
-  // === БЛОК: КНОПКА "ПОДЕЛИТЬСЯ" ===
+  const existingTokenDiv = document.getElementById('parent-link-result');
+
+  if (myStudentId) {
+    try {
+      const tokens = await db.fetchParentTokensForStudent(myStudentId);
+
+      if (tokens && tokens.length) {
+        // Токен уже есть — показываем ссылку и QR
+        const parentToken = tokens[0].token;
+        const parentUrl = window.location.origin + window.location.pathname.replace('student.html', 'parent.html') + '?token=' + parentToken;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(parentUrl)}&color=ec4899&bgcolor=ffffff&margin=10`;
+
+        existingTokenDiv.innerHTML = `
+          <div style="text-align:center;margin-bottom:12px;">
+            <img src="${qrUrl}" alt="QR для родителя" style="width:160px;height:160px;border:2px solid #fbcfe8;border-radius:12px;padding:6px;background:#fff;">
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+            <input type="text" value="${parentUrl}" readonly style="flex:1;min-width:150px;padding:8px;border-radius:8px;border:2px solid #fbcfe8;font-size:0.8rem;font-family:monospace;background:#fff;" id="parent-link-input">
+            <button id="copy-parent-link-btn" style="background:#ec4899;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:0.85rem;">
+              📋
+            </button>
+          </div>
+          <button id="share-parent-link-btn" style="width:100%;background:#be185d;color:#fff;border:none;padding:10px;border-radius:10px;cursor:pointer;font-size:0.9rem;">
+            📤 Отправить родителю
+          </button>
+          <button id="rotate-parent-link-btn" style="width:100%;background:#fff;color:#be185d;border:2px solid #fbcfe8;padding:8px;border-radius:10px;cursor:pointer;font-size:0.85rem;margin-top:6px;">
+            🔄 Перевыпустить (если потеряли)
+          </button>
+        `;
+
+        // Копировать
+        document.getElementById('copy-parent-link-btn').onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(parentUrl);
+            showStudentToast('📋 Ссылка для родителя скопирована!', 'ok');
+          } catch (e) {
+            document.getElementById('parent-link-input').select();
+            document.execCommand('copy');
+            showStudentToast('📋 Скопировано!', 'ok');
+          }
+        };
+
+        // Поделиться
+        const shareParentBtn = document.getElementById('share-parent-link-btn');
+        if (navigator.share) {
+          shareParentBtn.onclick = async () => {
+            try {
+              await navigator.share({
+                title: 'КЛАСС РОБОТОТЕХНИКИ',
+                text: 'Ссылка для родителей — посещаемость и домашки',
+                url: parentUrl,
+              });
+            } catch (e) {}
+          };
+        } else {
+          shareParentBtn.textContent = '📋 Скопировать ссылку';
+          shareParentBtn.onclick = document.getElementById('copy-parent-link-btn').onclick;
+        }
+
+        // Перевыпустить
+        document.getElementById('rotate-parent-link-btn').onclick = async () => {
+          if (!confirm('Старая ссылка перестанет работать. Создать новую?')) return;
+          try {
+            await db.rotateParentToken(myStudentId);
+            showStudentToast('🔄 Новая ссылка создана!', 'ok');
+            loadAccessTab();
+          } catch (e) {
+            showStudentToast('Ошибка: ' + e.message, 'err');
+          }
+        };
+      } else {
+        // Токена нет — кнопка создания
+        existingTokenDiv.innerHTML = `
+          <button id="create-parent-link-btn" style="width:100%;background:#ec4899;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;">
+            🔑 Создать доступ родителю
+          </button>
+        `;
+
+        document.getElementById('create-parent-link-btn').onclick = async () => {
+          try {
+            const result = await db.createParentToken(studentToken, null);
+
+            if (!result.success) {
+              throw new Error(result.error || 'Ошибка');
+            }
+
+            showStudentToast('🔑 Доступ создан!', 'ok');
+            loadAccessTab();
+          } catch (e) {
+            showStudentToast('Ошибка: ' + e.message, 'err');
+          }
+        };
+      }
+    } catch (e) {
+      console.error('Ошибка родительского доступа:', e);
+      existingTokenDiv.innerHTML = `<div style="color:#ef4444;font-size:0.85rem;">Ошибка: ${e.message}</div>`;
+    }
+  }
+
+  // ============================================
+  // 2. ПОДЕЛИТЬСЯ ССЫЛКОЙ (для ПК)
+  // ============================================
   const shareBox = document.createElement('div');
   shareBox.style.cssText = `
     background: linear-gradient(135deg, #eef2ff, #ddd6fe);
@@ -342,7 +444,9 @@ async function loadAccessTab() {
 
   container.appendChild(shareBox);
 
-  // === БЛОК: ИНСТРУКЦИЯ ===
+  // ============================================
+  // 3. ИНСТРУКЦИЯ "КАК РАБОТАТЬ НА ПК"
+  // ============================================
   const helpBox = document.createElement('div');
   helpBox.style.cssText = `
     background: #fef3c7;
@@ -352,6 +456,7 @@ async function loadAccessTab() {
     font-size: 0.9rem;
     color: #92400e;
     line-height: 1.6;
+    margin-bottom: 16px;
   `;
 
   helpBox.innerHTML = `
@@ -364,7 +469,36 @@ async function loadAccessTab() {
 
   container.appendChild(helpBox);
 
-  // === ОБРАБОТЧИК КНОПКИ ===
+  // ============================================
+  // 4. QR-КОД (в самом конце — как напоминание)
+  // ============================================
+  const qrBox = document.createElement('div');
+  qrBox.style.cssText = `
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    text-align: center;
+  `;
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(fullUrl)}&color=4f46e5&bgcolor=ffffff&margin=10`;
+
+  qrBox.innerHTML = `
+    <div style="font-size:1.1rem;font-weight:bold;color:#4f46e5;margin-bottom:12px;">
+      📱 Мой QR-код
+    </div>
+    <div style="font-size:0.85rem;color:#6b7280;margin-bottom:16px;">
+      Покажи этот QR — быстро войти в личный кабинет с телефона
+    </div>
+    <img src="${qrUrl}" alt="Мой QR-код" style="width:200px;height:200px;border:2px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff;">
+  `;
+
+  container.appendChild(qrBox);
+
+  // ============================================
+  // ОБРАБОТЧИК КНОПКИ "ПОДЕЛИТЬСЯ"
+  // ============================================
   const shareBtn = document.getElementById('access-share-btn');
 
   if (navigator.share) {
@@ -375,9 +509,7 @@ async function loadAccessTab() {
           text: 'Моя ссылка на личный кабинет',
           url: fullUrl,
         });
-      } catch (e) {
-        // Отмена — не страшно
-      }
+      } catch (e) {}
     };
   } else {
     shareBtn.textContent = '📋 Скопировать ссылку';

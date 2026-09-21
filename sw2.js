@@ -1,16 +1,20 @@
-const CACHE = 'robot-attendance-v6';
+const CACHE = 'robot-attendance-v10';
 
 const ASSETS = [
   './',
   './index.html',
   './student.html',
+  './parent.html',         
   './manifest.json',
   './css/style.css',
   './js/app.js',
   './js/db.js',
   './js/student.js',
+  './js/parent.js',        
   './js/ui.js',
   './js/export.js',
+  './icons/logo.svg',   
+  './icons/logo-icon.svg',   
   './fonts/Roboto-Regular.ttf',
 ];
 

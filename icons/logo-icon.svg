@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- БЕЛЫЙ КРУГ -->
+  <circle cx="50" cy="50" r="49" fill="#ffffff"/>
+  
+  <!-- РОБОТ -->
+  <g>
+    <!-- Голова-круг -->
+    <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
+    
+    <!-- RGB-сегменты (по 120°) -->
+    <!-- 🟢 ЗЕЛЁНЫЙ -->
+    <path d="M 50 10 A 40 40 0 0 1 84.6 70" 
+          fill="none" stroke="#22c55e" stroke-width="7" stroke-linecap="round"/>
+    
+    <!-- 🔵 СИНИЙ -->
+    <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" 
+          fill="none" stroke="#3b82f6" stroke-width="7" stroke-linecap="round"/>
+    
+    <!-- 🔴 КРАСНЫЙ -->
+    <path d="M 15.4 70 A 40 40 0 0 1 50 10" 
+          fill="none" stroke="#ef4444" stroke-width="7" stroke-linecap="round"/>
+    
+    <!-- Экран-очки (крупнее) -->
+    <rect x="26" y="34" width="48" height="18" rx="8" fill="#2d3748"/>
+    
+    <!-- Глаза (крупные) -->
+    <circle cx="38" cy="43" r="5" fill="#ffffff"/>
+    <circle cx="62" cy="43" r="5" fill="#ffffff"/>
+    
+    <!-- Блик на глазах -->
+    <circle cx="39.5" cy="41.5" r="1.5" fill="#2d3748" opacity="0.3"/>
+    <circle cx="63.5" cy="41.5" r="1.5" fill="#2d3748" opacity="0.3"/>
+    
+    <!-- Улыбка (крупная) -->
+    <path d="M 36 63 Q 50 74 64 63" 
+          stroke="#2d3748" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

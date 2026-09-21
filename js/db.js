@@ -712,6 +712,66 @@ export async function fetchTeacherFilesForHomework(homeworkId) {
   return data || [];
 }
 
+// ============================================
+// ТОКЕНЫ РОДИТЕЛЕЙ
+// ============================================
+
+// Ученик создаёт токен родителя
+export async function createParentToken(studentToken, parentName = null) {
+  const { data, error } = await supabase
+    .rpc('create_parent_token', {
+      p_student_token: studentToken,
+      p_parent_name: parentName,
+    });
+  if (error) throw error;
+  return data;  // { success, token, existing }
+}
+
+// Получить данные ребёнка по токену родителя
+export async function getChildByParentToken(parentToken) {
+  const { data, error } = await supabase
+    .rpc('get_child_by_parent_token', {
+      p_parent_token: parentToken,
+    });
+  if (error) throw error;
+  return data && data.length ? data[0] : null;
+}
+
+// Получить все токены родителей для ученика (для отображения)
+export async function fetchParentTokensForStudent(studentId) {
+  const { data, error } = await supabase
+    .from('parent_tokens')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// Перевыпустить токен (если потеряли)
+export async function rotateParentToken(studentId) {
+  // Блокируем старые
+  await supabase
+    .from('parent_tokens')
+    .update({ is_active: false })
+    .eq('student_id', studentId);
+
+  // Создаём новый
+  const newToken = Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const { data, error } = await supabase
+    .from('parent_tokens')
+    .insert({ student_id: studentId, token: newToken })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 window.__db = { 
   fetchMessages, 
   sendTeacherMessage, 
