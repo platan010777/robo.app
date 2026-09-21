@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ec4899" />
+  <title>📖 Родительский доступ — КЛАСС РОБОТОТЕХНИКИ</title>
+  <link rel="icon" type="image/svg+xml" href="icons/logo-icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Comic Sans MS', 'Segoe UI', system-ui, sans-serif;
+      background: #fdf2f8;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: linear-gradient(90deg, #ec4899, #be185d);
+      color: #fff;
+      padding: 16px 20px;
+      border-radius: 0 0 20px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    }
+
+    .topbar h1 {
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    .loading, .error-state {
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 1.1rem;
+    }
+
+    .loading { color: #ec4899; }
+    .error-state { color: #ef4444; }
+
+    .robot-emoji {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+      margin-bottom: 16px;
+    }
+
+    .child-name {
+      display: inline-block;
+      background: linear-gradient(90deg, #ec4899, #be185d);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      background: #fce7f3;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #be185d;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #9ca3af;
+      font-size: 0.85rem;
+    }
+
+    .lesson-card {
+      background: #fafafa;
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      border-left: 4px solid #ec4899;
+    }
+
+    .hw-card {
+      background: #fce7f3;
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      border-left: 4px solid #ec4899;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1 style="display:flex;align-items:center;gap:8px;">
+  <img src="icons/logo.svg?v=210" alt="Логотип" style="width:44px;height:44px;">
+  РОДИТЕЛЬСКИЙ ДОСТУП
+</h1>
+  </header>
+
+  <main>
+    <div id="content">
+      <div class="loading">
+        <span class="robot-emoji">🤖</span>
+        Загружаю...
+      </div>
+    </div>
+  </main>
+
+  <div class="footer">
+    Сделано с ❤️ для юных робототехников
+  </div>
+
+  <script type="module" src="js/parent.js"></script>
+</body>
+</html>

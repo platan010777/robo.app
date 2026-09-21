@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>🤖 КЛАСС РОБОТОТЕХНИКИ: журнал посещаемости</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="icons/logo-icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+</head>
+<body>
+    <header class="topbar">
+    <button id="burger-btn" class="burger-btn" aria-label="Меню">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <h1>
+  <img src="icons/logo.svg?v=210" alt="Логотип" style="width:52px;height:52px;vertical-align:middle;margin-right:10px;">
+  КЛАСС РОБОТОТЕХНИКИ
+</h1>
+    <div id="user-info"></div>
+  </header>
+
+  <!-- Затемнение фона -->
+  <div id="menu-overlay" class="menu-overlay"></div>
+
+  <!-- Боковое меню -->
+  <aside id="side-menu" class="side-menu">
+    <div class="side-menu-header">
+      <img src="icons/logo.svg?v=210" alt="Логотип" style="width:52px;height:52px;vertical-align:middle;margin-right:10px;">
+      <span class="side-menu-title">КЛАСС РОБОТОТЕХНИКИ</span>
+    </div>
+    <nav class="side-menu-nav">
+      <button data-tab="journal" class="side-menu-item active">
+        <span class="menu-icon">📋</span>
+        <span>Журнал</span>
+      </button>
+      <button data-tab="requests" class="side-menu-item">
+        <span class="menu-icon">📨</span>
+        <span>Заявки</span>
+        <span class="menu-badge" id="badge-requests"></span>
+      </button>
+      <button data-tab="students" class="side-menu-item">
+        <span class="menu-icon">👥</span>
+        <span>Ученики</span>
+      </button>
+      <button data-tab="lessons" class="side-menu-item">
+        <span class="menu-icon">📅</span>
+        <span>Занятия</span>
+      </button>
+      <button data-tab="schedule" class="side-menu-item">
+        <span class="menu-icon">🗓️</span>
+        <span>Расписание</span>
+      </button>
+      <button data-tab="reports" class="side-menu-item">
+        <span class="menu-icon">📊</span>
+        <span>Отчёты</span>
+      </button>
+      <button data-tab="qrcodes" class="side-menu-item">
+        <span class="menu-icon">📱</span>
+        <span>QR групп</span>
+      </button>
+      <button data-tab="passes" class="side-menu-item">
+        <span class="menu-icon">🎫</span>
+        <span>Пропуска</span>
+      </button>
+      <button data-tab="announcements" class="side-menu-item">
+        <span class="menu-icon">📢</span>
+        <span>Объявления</span>
+      </button>
+      <button data-tab="chats" class="side-menu-item">
+        <span class="menu-icon">💬</span>
+        <span>Чаты</span>
+        <span class="menu-badge" id="badge-chats"></span>
+      </button>
+      <button data-tab="homework" class="side-menu-item">
+        <span class="menu-icon">📚</span>
+        <span>Домашки</span>
+      </button>
+      <button data-tab="settings" class="side-menu-item">
+        <span class="menu-icon">⚙️</span>
+        <span>Настройки</span>
+      </button>
+    </nav>
+    <div class="side-menu-footer">
+      <div id="menu-user-info"></div>
+    </div>
+  </aside>
+
+   <nav class="tabs">
+    <button data-tab="journal" class="active">📋 Журнал</button>
+    <button data-tab="schedule">🗓️ Расписание</button>
+    <button data-tab="requests">📨 Заявки</button>
+    <button data-tab="students">👥 Ученики</button>
+    <button data-tab="lessons">📅 Занятия</button>
+    <button data-tab="homework">📚 Домашки</button>
+    <button data-tab="reports">📊 Отчёты</button>
+    <button data-tab="qrcodes">📱 QR групп</button>
+    <button data-tab="passes">🎫 Пропуска</button>
+    <button data-tab="announcements">📢 Объявления</button>
+    <button data-tab="chats">💬 Чаты</button>
+    <button data-tab="settings">⚙️ Настройки</button>
+  </nav>
+
+     <main id="app">
+    <section id="tab-schedule" class="tab">
+      <h2>🗓️ Расписание на неделю</h2>
+      <p>Скоро тут будет расписание...</p>
+    </section>
+    <section id="tab-journal" class="tab active">
+      <h2>📋 Журнал посещаемости</h2>
+    </section>
+    <section id="tab-requests" class="tab">
+      <h2>📨 Заявки от учеников</h2>
+    </section>
+    <section id="tab-students" class="tab">
+      <h2>👥 Ученики</h2>
+    </section>
+    <section id="tab-lessons" class="tab">
+      <h2>📅 Занятия</h2>
+    </section>
+    <section id="tab-homework" class="tab">
+      <h2>📚 Домашки</h2>
+    </section>
+    <section id="tab-reports" class="tab">
+      <h2>📊 Отчёты</h2>
+    </section>
+    <section id="tab-settings" class="tab">
+      <h2>⚙️ Настройки</h2>
+    </section>
+    <section id="tab-qrcodes" class="tab">
+      <h2>📱 QR-коды групп</h2>
+    </section>
+    <section id="tab-passes" class="tab">
+      <h2>🎫 Пропуска</h2>
+    </section>
+    <section id="tab-announcements" class="tab">
+      <h2>📢 Объявления</h2>
+    </section>
+    <section id="tab-chats" class="tab">
+      <h2>💬 Чаты</h2>
+    </section>
+  </main>
+
+  <div id="auth-screen" class="modal">
+    <div class="modal-box">
+      <h2>🔐 Вход</h2>
+      <input id="auth-email" type="email" placeholder="Email" />
+      <input id="auth-password" type="password" placeholder="Пароль" />
+      <button id="auth-login">Войти</button>
+      <p id="auth-error" class="error"></p>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>📖 Занятия — КЛАСС РОБОТОТЕХНИКИ</title>
+  <link rel="icon" type="image/svg+xml" href="icons/logo-icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Comic Sans MS', 'Segoe UI', system-ui, sans-serif;
+      background: #e4e3f3;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: linear-gradient(90deg, #4f46e5, #9333ea);
+      color: #fff;
+      padding: 16px 20px;
+      border-radius: 0 0 20px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar h1 {
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    .group-badge {
+      display: inline-block;
+      background: linear-gradient(90deg, #4f46e5, #9333ea);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(79,70,229,.3);
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #4f46e5;
+      margin: 24px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lesson-card {
+      background: #fafafa;
+      padding: 16px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1);
+      margin-bottom: 12px;
+      border-left: 5px solid #4f46e5;
+      transition: transform .15s;
+    }
+
+    .lesson-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .lesson-card.past {
+      opacity: 0.7;
+      border-left-color: #9ca3af;
+    }
+
+    .lesson-card.today {
+      border-left-color: #22c55e;
+      background: #f0fdf4;
+    }
+
+    .lesson-date {
+      color: #4f46e5;
+      font-weight: bold;
+      font-size: 1rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lesson-card.past .lesson-date {
+      color: #6b7280;
+    }
+
+    .lesson-card.today .lesson-date {
+      color: #16a34a;
+    }
+
+    .lesson-topic {
+      font-size: 1.1rem;
+      color: #1f2937;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .lesson-teacher {
+      font-size: 0.9rem;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .today-badge {
+      display: inline-block;
+      background: #22c55e;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 8px;
+    }
+
+    .loading, .empty-state, .error-state {
+      text-align: center;
+      padding: 50px 20px;
+      font-size: 1.1rem;
+      color: #6b7280;
+    }
+
+    .loading {
+      color: #4f46e5;
+    }
+
+    .error-state {
+      color: #ef4444;
+    }
+
+    .robot-emoji {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #9ca3af;
+      font-size: 0.85rem;
+    }
+
+    /* ============================================
+       ВКЛАДКИ УЧЕНИКА
+       ============================================ */
+    .student-tab {
+      display: none;
+    }
+
+    .student-tab.active {
+      display: block;
+      animation: fadeIn .2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============================================
+       БУРГЕР-КНОПКА
+       ============================================ */
+    #student-burger-btn {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 28px;
+      height: 22px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      z-index: 1001;
+      flex-shrink: 0;
+    }
+
+    #student-burger-btn span {
+      display: block;
+      height: 3px;
+      width: 100%;
+      background: #fff;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    #student-burger-btn.open span:nth-child(1) {
+      transform: translateY(9px) rotate(45deg);
+    }
+
+    #student-burger-btn.open span:nth-child(2) {
+      opacity: 0;
+    }
+
+    #student-burger-btn.open span:nth-child(3) {
+      transform: translateY(-10px) rotate(-45deg);
+    }
+
+    /* ============================================
+       ЗАТЕМНЕНИЕ И БОКОВОЕ МЕНЮ
+       ============================================ */
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .menu-overlay.show {
+      display: block;
+      opacity: 1;
+    }
+
+    .side-menu {
+      position: fixed;
+      top: 0;
+      left: -320px;
+      width: 300px;
+      height: 100vh;
+      background: #fff;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+      z-index: 999;
+      transition: left 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .side-menu.open {
+      left: 0;
+    }
+
+    .side-menu-header {
+      background: linear-gradient(135deg, #4f46e5, #9333ea);
+      color: #fff;
+      padding: 20px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .side-menu-logo {
+      font-size: 1.6rem;
+    }
+
+    .side-menu-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 8px;
+    }
+
+    .side-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 14px;
+      background: transparent;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      text-align: left;
+      color: #1f2937;
+      font-family: inherit;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+
+    .side-menu-item:hover {
+      background: #f3f4f6;
+    }
+
+    .side-menu-item.active {
+      background: linear-gradient(135deg, #4f46e5, #9333ea);
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .side-menu-item .menu-icon {
+      font-size: 1.2rem;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .side-menu-item span:nth-child(2) {
+      flex: 1;
+    }
+
+    .side-menu-footer {
+      padding: 16px;
+      border-top: 2px solid #e5e7eb;
+      font-size: 0.85rem;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    /* ============================================
+       МОБИЛЬНАЯ ВЕРСИЯ
+       ============================================ */
+    @media (max-width: 768px) {
+      #student-burger-btn {
+        display: flex;
+      }
+
+      .tabs {
+        display: none;
+      }
+
+      .topbar {
+        padding: 12px 14px;
+        gap: 8px;
+      }
+
+      .topbar h1 {
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        min-width: 0;
+      }
+
+      #chat-btn {
+        padding: 6px 10px !important;
+        font-size: 0.85rem !important;
+      }
+
+      main {
+        padding: 12px;
+      }
+    }
+
+        /* ============================================
+       ГОРИЗОНТАЛЬНЫЕ ВКЛАДКИ (для компа)
+       ============================================ */
+    .student-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      justify-content: center;
+      flex-wrap: wrap;
+      background: #e4e3f3;
+    }
+
+    .student-tab-btn {
+      background: #fff;
+      border: 2px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+      font-family: inherit;
+      color: #1f2937;
+    }
+
+    .student-tab-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .student-tab-btn.active {
+      background: linear-gradient(135deg, #4f46e5, #9333ea);
+      color: #fff;
+      border-color: #4f46e5;
+      box-shadow: 0 4px 12px rgba(79,70,229,.4);
+    }
+
+    /* На телефоне — скрываем вкладки */
+    @media (max-width: 768px) {
+      .student-tabs {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+      <button id="student-burger-btn" class="burger-btn" aria-label="Меню">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h1 style="font-size:1.1rem;display:flex;align-items:center;gap:8px;">
+  <img src="icons/logo.svg?v=210" alt="Логотип" style="width:48px;height:48px;">
+  КЛАСС РОБОТОТЕХНИКИ
+</h1>
+    </div>
+    <button id="chat-btn" style="
+      background:rgba(255,255,255,.2);
+      color:#fff;
+      border:none;
+      padding:8px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:0.95rem;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      position:relative;
+      transition:background .15s;
+      flex-shrink:0;
+    " onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">
+      💬 Чат
+      <span id="chat-badge" style="
+        display:none;
+        background:#ef4444;
+        color:#fff;
+        border-radius:999px;
+        padding:1px 7px;
+        font-size:0.75rem;
+        font-weight:bold;
+        min-width:18px;
+        text-align:center;
+      ">0</span>
+    </button>
+  </header>
+
+    <!-- Горизонтальные вкладки (для компа) -->
+  <nav class="student-tabs">
+    <button data-student-tab="main" class="student-tab-btn active">📋 Главная</button>
+    <button data-student-tab="schedule" class="student-tab-btn">🗓️ Расписание</button>
+    <button data-student-tab="lessons" class="student-tab-btn">📅 Занятия</button>
+    <button data-student-tab="homework" class="student-tab-btn">📚 Домашки</button>
+    <button data-student-tab="attendance" class="student-tab-btn">📊 Посещаемость</button>
+    <button data-student-tab="top" class="student-tab-btn">🏆 Топ-10</button>
+    <button data-student-tab="access" class="student-tab-btn">🔑 Мой доступ</button>
+  </nav>
+
+  <!-- Затемнение фона -->
+  <div id="student-menu-overlay" class="menu-overlay"></div>
+
+  <!-- Боковое меню ученика -->
+  <aside id="student-side-menu" class="side-menu">
+    <div class="side-menu-header">
+      <img src="icons/logo.svg" alt="Логотип" style="width:32px;height:32px;">
+      <span class="side-menu-title">УЧЕНИК</span>
+    </div>
+    <div id="student-menu-info" style="padding:12px 16px;background:#eef2ff;color:#4f46e5;font-size:0.85rem;font-weight:bold;border-bottom:1px solid #e5e7eb;"></div>
+    <nav class="side-menu-nav">
+      <button data-student-tab="main" class="side-menu-item active">
+        <span class="menu-icon">📋</span>
+        <span>Главная</span>
+      </button>
+      <button data-student-tab="schedule" class="side-menu-item">
+        <span class="menu-icon">🗓️</span>
+        <span>Расписание</span>
+      </button>
+      <button data-student-tab="lessons" class="side-menu-item">
+        <span class="menu-icon">📅</span>
+        <span>Занятия</span>
+      </button>
+      <button data-student-tab="homework" class="side-menu-item">
+        <span class="menu-icon">📚</span>
+        <span>Домашки</span>
+      </button>
+      <button data-student-tab="attendance" class="side-menu-item">
+        <span class="menu-icon">📊</span>
+        <span>Посещаемость</span>
+      </button>
+      <button data-student-tab="top" class="side-menu-item">
+        <span class="menu-icon">🏆</span>
+        <span>Топ-10 школы</span>
+      </button>
+      <button data-student-tab="access" class="side-menu-item">
+        <span class="menu-icon">🔑</span>
+        <span>Мой доступ</span>
+      </button>
+    </nav>
+    <div class="side-menu-footer">
+      Сделано с ❤️ для юных робототехников
+    </div>
+  </aside>
+
+  <main>
+    <!-- ВКЛАДКА: ГЛАВНАЯ -->
+    <section id="student-tab-main" class="student-tab active">
+      <div id="group-info"></div>
+      <div id="main-content">
+        <div class="loading">
+          <span class="robot-emoji">🤖</span>
+          Загружаю...
+        </div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА: РАСПИСАНИЕ -->
+    <section id="student-tab-schedule" class="student-tab">
+      <h2 style="color:#4f46e5;font-size:1.2rem;margin-bottom:16px;">🗓️ Расписание на неделю</h2>
+      <div id="schedule-content">
+        <p style="color:#9ca3af;text-align:center;padding:40px;">Загружаю...</p>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА: ЗАНЯТИЯ -->
+    <section id="student-tab-lessons" class="student-tab">
+      <h2 style="color:#4f46e5;font-size:1.2rem;margin-bottom:16px;">📅 Занятия</h2>
+      <div id="lessons-list">
+        <div class="loading">🔄 Загружаю занятия...</div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА: ДОМАШКИ -->
+    <section id="student-tab-homework" class="student-tab">
+      <h2 style="color:#4f46e5;font-size:1.2rem;margin-bottom:16px;">📚 Мои домашки</h2>
+      <div id="homework-content">
+        <p style="color:#9ca3af;text-align:center;padding:40px;">Загружаю...</p>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА: ПОСЕЩАЕМОСТЬ -->
+    <section id="student-tab-attendance" class="student-tab">
+      <h2 style="color:#4f46e5;font-size:1.2rem;margin-bottom:16px;">📊 Моя посещаемость</h2>
+      <div id="attendance-content">
+        <p style="color:#9ca3af;text-align:center;padding:40px;">Загружаю...</p>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА: ТОП-10 -->
+    <section id="student-tab-top" class="student-tab">
+      <h2 style="color:#4f46e5;font-size:1.2rem;margin-bottom:16px;">🏆 Топ-10 школы</h2>
+      <div id="top-content">
+        <p style="color:#9ca3af;text-align:center;padding:40px;">Загружаю...</p>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА: МОЙ ДОСТУП -->
+    <section id="student-tab-access" class="student-tab">
+      <h2 style="color:#4f46e5;font-size:1.2rem;margin-bottom:16px;">🔑 Мой доступ</h2>
+      <div id="access-content">
+        <p style="color:#9ca3af;text-align:center;padding:40px;">Загружаю...</p>
+      </div>
+    </section>
+
+</main>
+
+  <div class="footer">
+    Сделано с ❤️ для юных робототехников
+  </div>
+
+  <!-- Модальное окно чата -->
+  <div id="chat-modal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.6);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  ">
+    <div style="
+      background:#fff;
+      border-radius:20px;
+      width:100%;
+      max-width:600px;
+      height:90vh;
+      max-height:700px;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,.4);
+    ">
+      <!-- Шапка чата -->
+      <div style="
+        background:linear-gradient(90deg,#4f46e5,#9333ea);
+        color:#fff;
+        padding:16px 20px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+      ">
+        <div style="font-weight:bold;font-size:1.1rem;">💬 Чат</div>
+        <button id="chat-close" style="
+          background:rgba(255,255,255,.2);
+          color:#fff;
+          border:none;
+          width:32px;height:32px;
+          border-radius:50%;
+          cursor:pointer;
+          font-size:1.2rem;
+          line-height:1;
+        ">✕</button>
+      </div>
+
+      <!-- Вкладки чата -->
+      <div style="display:flex;background:#f3f4f6;border-bottom:2px solid #e5e7eb;">
+        <button id="chat-tab-group" class="chat-tab active" style="
+          flex:1;
+          padding:12px;
+          border:none;
+          background:transparent;
+          cursor:pointer;
+          font-size:0.95rem;
+          font-weight:bold;
+          color:#4f46e5;
+          border-bottom:3px solid #4f46e5;
+        ">🏫 Моя группа</button>
+        <button id="chat-tab-global" class="chat-tab" style="
+          flex:1;
+          padding:12px;
+          border:none;
+          background:transparent;
+          cursor:pointer;
+          font-size:0.95rem;
+          color:#6b7280;
+          border-bottom:3px solid transparent;
+        ">🌍 Общий</button>
+      </div>
+
+      <!-- Список сообщений -->
+      <div id="chat-messages" style="
+        flex:1;
+        overflow-y:auto;
+        padding:16px;
+        background:#f9fafb;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      "></div>
+
+      <!-- Форма отправки -->
+      <div style="
+        padding:12px;
+        background:#fff;
+        border-top:2px solid #e5e7eb;
+        display:flex;
+        gap:8px;
+        align-items:flex-end;
+      ">
+        <textarea id="chat-input" placeholder="Написать сообщение..." rows="1" style="
+          flex:1;
+          padding:10px 14px;
+          border:2px solid #e5e7eb;
+          border-radius:14px;
+          resize:none;
+          font-family:inherit;
+          font-size:0.95rem;
+          max-height:120px;
+          outline:none;
+        "></textarea>
+        <button id="chat-send" style="
+          background:#4f46e5;
+          color:#fff;
+          border:none;
+          width:44px;height:44px;
+          border-radius:50%;
+          cursor:pointer;
+          font-size:1.2rem;
+          flex-shrink:0;
+        ">📤</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/student.js"></script>
+</body>
+</html>
