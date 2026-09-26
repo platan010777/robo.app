@@ -246,6 +246,38 @@ async function loadMainTab(student) {
       mainContent.innerHTML = '';
       mainContent.appendChild(makeStatsBox(stats));
     }
+          // Загружаем бонусы
+      try {
+        const bonuses = await db.fetchMyBonuses(studentToken);
+        if (bonuses && bonuses.length) {
+          const bonusBox = document.createElement('div');
+          bonusBox.style.cssText = `
+            background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 16px;
+            border-left: 5px solid #ec4899;
+          `;
+          bonusBox.innerHTML = `
+            <div style="font-weight:bold;color:#be185d;font-size:1rem;margin-bottom:10px;">
+              🎁 Бонусы от учителя
+            </div>
+            ${bonuses.map(b => `
+              <div style="background:#fff;padding:10px;border-radius:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="flex:1;">
+                  <div style="font-size:0.9rem;color:#1f2937;">${b.reason}</div>
+                  <div style="font-size:0.75rem;color:#9ca3af;margin-top:2px;">${b.teacher_name || 'Учитель'} · ${new Date(b.created_at).toLocaleDateString('ru-RU')}</div>
+                </div>
+                <div style="font-weight:bold;font-size:1.1rem;color:${b.points > 0 ? '#22c55e' : '#ef4444'};">
+                  ${b.points > 0 ? '+' : ''}${b.points}
+                </div>
+              </div>
+            `).join('')}
+          `;
+          mainContent.appendChild(bonusBox);
+        }
+      } catch (e) { console.error('Ошибка бонусов:', e); }
+      
     const attContent = document.getElementById('attendance-content');
     if (attContent) {
       attContent.innerHTML = '';

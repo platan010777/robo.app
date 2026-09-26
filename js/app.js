@@ -210,6 +210,13 @@ async function renderStudents() {
     card.appendChild(info);
 
     const actions = el('div', { style: 'display:flex;gap:6px;' });
+    
+    actions.appendChild(el('button', {
+      style: 'background:#ec4899;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
+      title: 'Добавить бонус',
+      onclick: () => openBonusForm(s),
+    }, '🎁'));
+    
     actions.appendChild(el('button', {
       style: 'background:#f59e0b;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
       onclick: () => openStudentForm(s),
@@ -2742,6 +2749,63 @@ async function renderSchedule() {
     return `${d.name}=${formatLocalDate(dd)}`;
   }));
   console.log('📅 Занятий 21.09:', allLessons.filter(l => l.date === '2026-09-21').length);
+}
+
+// ============================================
+// БОНУСЫ — UI учителя
+// ============================================
+function openBonusForm(student) {
+  const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
+
+  form.appendChild(el('div', {
+    style: 'font-weight:bold;color:#4f46e5;font-size:1.05rem;',
+  }, `🎁 Бонус для ${student.full_name}`));
+
+  const pointsInput = el('input', {
+    type: 'number',
+    placeholder: 'Сколько баллов? (например, 10 или -5)',
+    value: '10',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
+  });
+  const reasonInput = el('textarea', {
+    placeholder: 'За что? (обязательно)',
+    style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;min-height:80px;',
+  });
+
+  const quickBtns = el('div', { style: 'display:grid;grid-template-columns:repeat(4,1fr);gap:6px;' });
+  [5, 10, 20, 50].forEach(p => {
+    quickBtns.appendChild(el('button', {
+      type: 'button',
+      style: 'background:#f3f4f6;color:#1f2937;border:none;padding:8px;border-radius:8px;cursor:pointer;font-size:0.9rem;',
+      onclick: () => { pointsInput.value = p; },
+    }, `+${p}`));
+  });
+
+  const negativeBtns = el('div', { style: 'display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;' });
+  [-5, -10, -20, -50].forEach(p => {
+    negativeBtns.appendChild(el('button', {
+      type: 'button',
+      style: 'background:#fee2e2;color:#ef4444;border:none;padding:8px;border-radius:8px;cursor:pointer;font-size:0.9rem;',
+      onclick: () => { pointsInput.value = p; },
+    }, `${p}`));
+  });
+
+  form.appendChild(el('label', {}, 'Баллы:'));
+  form.appendChild(pointsInput);
+  form.appendChild(quickBtns);
+  form.appendChild(negativeBtns);
+  form.appendChild(el('label', {}, 'Причина:'));
+  form.appendChild(reasonInput);
+
+  openModal('🎁 Бонус', form, async () => {
+    const points = parseInt(pointsInput.value, 10);
+    if (isNaN(points) || points === 0) throw new Error('Введи число баллов (не 0)');
+    if (!reasonInput.value.trim()) throw new Error('Напиши, за что бонус');
+
+    const teacherName = currentUser?.user_metadata?.full_name || currentUser?.email || 'Учитель';
+    await db.addBonus(student.id, points, reasonInput.value.trim(), teacherName);
+    toast(`🎁 Бонус ${points > 0 ? '+' : ''}${points} баллов для ${student.full_name}`, 'ok');
+  });
 }
 
 // Экспорт для отладки

@@ -772,6 +772,54 @@ export async function rotateParentToken(studentId) {
   return data;
 }
 
+// ============================================
+// БОНУСЫ УЧЕНИКОВ
+// ============================================
+
+// Добавить бонус (учитель)
+export async function addBonus(studentId, points, reason, teacherName) {
+  const { data, error } = await supabase
+    .from('student_bonuses')
+    .insert({
+      student_id: studentId,
+      points: points,
+      reason: reason,
+      teacher_name: teacherName,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Удалить бонус
+export async function deleteBonus(bonusId) {
+  const { error } = await supabase
+    .from('student_bonuses')
+    .delete()
+    .eq('id', bonusId);
+  if (error) throw error;
+}
+
+// Получить все бонусы ученика (учитель)
+export async function fetchBonusesForStudent(studentId) {
+  const { data, error } = await supabase
+    .from('student_bonuses')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// Получить бонусы по токену (ученик)
+export async function fetchMyBonuses(studentToken) {
+  const { data, error } = await supabase
+    .rpc('get_my_bonuses', { p_token: studentToken });
+  if (error) throw error;
+  return data || [];
+}
+
 window.__db = { 
   fetchMessages, 
   sendTeacherMessage, 
