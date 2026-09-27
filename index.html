@@ -80,7 +80,8 @@
       <h2>🗓️ Расписание на неделю</h2>
       <p>Скоро тут будет расписание...</p>
     </section>
-        <section id="tab-lessons" class="tab active">
+
+    <section id="tab-lessons" class="tab active">
       <h2>📅 Занятия</h2>
 
       <!-- ПОДВКЛАДКИ -->
@@ -88,19 +89,18 @@
         <button data-subtab="lessons-journal" class="subtab-btn">📋 Журнал</button>
         <button data-subtab="lessons-homework" class="subtab-btn">📚 Домашки</button>
       </div>
-
       <!-- ПОДСЕКЦИЯ: Список занятий (главный экран) -->
       <div id="subtab-lessons-list" class="subtab-content active"></div>
-
       <!-- ПОДСЕКЦИЯ: Журнал -->
       <div id="subtab-lessons-journal" class="subtab-content"></div>
-
       <!-- ПОДСЕКЦИЯ: Домашки -->
       <div id="subtab-lessons-homework" class="subtab-content"></div>
     </section>
+
     <section id="tab-requests" class="tab">
       <h2>📨 Заявки от учеников</h2>
     </section>
+
     <section id="tab-students" class="tab">
       <h2>👥 Ученики</h2>
   
@@ -108,18 +108,20 @@
           <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
             <button data-subtab="students-requests" class="subtab-btn active">📨 Заявки <span id="subtab-requests-badge" class="subtab-badge" style="display:none;"></span></button>
             <button data-subtab="students-list" class="subtab-btn">👥 Список</button>
-         </div>
-  
+         </div>  
       <!-- ПОДСЕКЦИЯ: Заявки (активна по умолчанию) -->
-          <div id="subtab-students-requests" class="subtab-content active"></div>
-  
+          <div id="subtab-students-requests" class="subtab-content active"></div>  
       <!-- ПОДСЕКЦИЯ: Список -->
-          <div id="subtab-students-list" class="subtab-content"></div>
-  
+          <div id="subtab-students-list" class="subtab-content"></div>  
       <!-- ПОДСЕКЦИЯ: Заявки -->
           <div id="subtab-students-requests" class="subtab-content"></div>
     </section>
-        <section id="tab-settings" class="tab">
+
+    <section id="tab-reports" class="tab">
+      <h2>📊 Отчёты</h2>
+    </section>
+
+    <section id="tab-settings" class="tab">
       <h2>⚙️ Настройки</h2>
 
       <!-- ПОДВКЛАДКИ -->
@@ -128,31 +130,26 @@
         <button data-subtab="settings-passes" class="subtab-btn">🎫 Пропуска</button>
         <button data-subtab="settings-cleanup" class="subtab-btn">🧹 Очистка БД</button>
       </div>
-
       <!-- ПОДСЕКЦИЯ: Группы (главный экран, без подвкладки) -->
       <div id="subtab-settings-groups" class="subtab-content active"></div>
-
       <!-- ПОДСЕКЦИЯ: QR-групп -->
       <div id="subtab-settings-qr" class="subtab-content"></div>
-
       <!-- ПОДСЕКЦИЯ: Пропуска -->
       <div id="subtab-settings-passes" class="subtab-content"></div>
-
       <!-- ПОДСЕКЦИЯ: Очистка БД -->
       <div id="subtab-settings-cleanup" class="subtab-content"></div>
     </section>
+
     <section id="tab-communication" class="tab">
-  <h2>📢 Связь</h2>
+      <h2>📢 Связь</h2>
   
       <!-- ПОДВКЛАДКИ -->
     <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
       <button data-subtab="comm-announcements" class="subtab-btn active">📢 Объявления</button>
       <button data-subtab="comm-chats" class="subtab-btn">💬 Чаты <span id="subtab-chats-badge" class="subtab-badge" style="display:none;"></span></button>
-    </div>
-  
+    </div>  
       <!-- ПОДСЕКЦИЯ: Объявления -->
-    <div id="subtab-comm-announcements" class="subtab-content active"></div>
-  
+    <div id="subtab-comm-announcements" class="subtab-content active"></div>  
       <!-- ПОДСЕКЦИЯ: Чаты -->
     <div id="subtab-comm-chats" class="subtab-content"></div>
     </section>

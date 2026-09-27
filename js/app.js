@@ -898,6 +898,10 @@ function updateJournalSummary(lessonId, students) {
 // ============================================
 async function renderReports() {
   const root = document.getElementById('tab-reports');
+  if (!root) {
+    console.error('❌ Не найден #tab-reports в index.html'); //ПРОВЕРКА НАЛИЧИЯ РАЗДЕЛА
+    return;
+  }
   root.innerHTML = '';
 
   root.appendChild(el('h2', {}, '📊 Отчёты'));
