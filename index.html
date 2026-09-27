@@ -35,20 +35,11 @@
       <span class="side-menu-title">КЛАСС РОБОТОТЕХНИКИ</span>
     </div>
     <nav class="side-menu-nav">
-      <button data-tab="journal" class="side-menu-item active">
-        <span class="menu-icon">📋</span>
-        <span>Журнал</span>
-      </button>
-      <button data-tab="requests" class="side-menu-item">
-        <span class="menu-icon">📨</span>
-        <span>Заявки</span>
-        <span class="menu-badge" id="badge-requests"></span>
-      </button>
       <button data-tab="students" class="side-menu-item">
         <span class="menu-icon">👥</span>
         <span>Ученики</span>
       </button>
-      <button data-tab="lessons" class="side-menu-item">
+      <button data-tab="lessons" class="side-menu-item active">
         <span class="menu-icon">📅</span>
         <span>Занятия</span>
       </button>
@@ -59,27 +50,11 @@
       <button data-tab="reports" class="side-menu-item">
         <span class="menu-icon">📊</span>
         <span>Отчёты</span>
-      </button>
-      <button data-tab="qrcodes" class="side-menu-item">
-        <span class="menu-icon">📱</span>
-        <span>QR групп</span>
-      </button>
-      <button data-tab="passes" class="side-menu-item">
-        <span class="menu-icon">🎫</span>
-        <span>Пропуска</span>
-      </button>
-      <button data-tab="announcements" class="side-menu-item">
+      </button>      
+      <button data-tab="communication" class="side-menu-item">
         <span class="menu-icon">📢</span>
-        <span>Объявления</span>
-      </button>
-      <button data-tab="chats" class="side-menu-item">
-        <span class="menu-icon">💬</span>
-        <span>Чаты</span>
+        <span>Связь</span>
         <span class="menu-badge" id="badge-chats"></span>
-      </button>
-      <button data-tab="homework" class="side-menu-item">
-        <span class="menu-icon">📚</span>
-        <span>Домашки</span>
       </button>
       <button data-tab="settings" class="side-menu-item">
         <span class="menu-icon">⚙️</span>
@@ -91,58 +66,95 @@
     </div>
   </aside>
 
-   <nav class="tabs">
-    <button data-tab="journal" class="active">📋 Журнал</button>
-    <button data-tab="schedule">🗓️ Расписание</button>
-    <button data-tab="requests">📨 Заявки</button>
-    <button data-tab="students">👥 Ученики</button>
-    <button data-tab="lessons">📅 Занятия</button>
-    <button data-tab="homework">📚 Домашки</button>
-    <button data-tab="reports">📊 Отчёты</button>
-    <button data-tab="qrcodes">📱 QR групп</button>
-    <button data-tab="passes">🎫 Пропуска</button>
-    <button data-tab="announcements">📢 Объявления</button>
-    <button data-tab="chats">💬 Чаты</button>
-    <button data-tab="settings">⚙️ Настройки</button>
-  </nav>
+    <nav class="tabs">
+      <button data-tab="schedule">🗓️ Расписание</button>
+      <button data-tab="students">👥 Ученики</button>
+      <button data-tab="lessons" class="active">📅 Занятия</button>
+      <button data-tab="reports">📊 Отчёты</button>
+      <button data-tab="communication">📢 Связь</button>
+      <button data-tab="settings">⚙️ Настройки</button>
+    </nav>
 
      <main id="app">
     <section id="tab-schedule" class="tab">
       <h2>🗓️ Расписание на неделю</h2>
       <p>Скоро тут будет расписание...</p>
     </section>
-    <section id="tab-journal" class="tab active">
-      <h2>📋 Журнал посещаемости</h2>
+        <section id="tab-lessons" class="tab active">
+      <h2>📅 Занятия</h2>
+
+      <!-- ПОДВКЛАДКИ -->
+      <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+        <button data-subtab="lessons-journal" class="subtab-btn">📋 Журнал</button>
+        <button data-subtab="lessons-homework" class="subtab-btn">📚 Домашки</button>
+      </div>
+
+      <!-- ПОДСЕКЦИЯ: Список занятий (главный экран) -->
+      <div id="subtab-lessons-list" class="subtab-content active"></div>
+
+      <!-- ПОДСЕКЦИЯ: Журнал -->
+      <div id="subtab-lessons-journal" class="subtab-content"></div>
+
+      <!-- ПОДСЕКЦИЯ: Домашки -->
+      <div id="subtab-lessons-homework" class="subtab-content"></div>
     </section>
     <section id="tab-requests" class="tab">
       <h2>📨 Заявки от учеников</h2>
     </section>
     <section id="tab-students" class="tab">
       <h2>👥 Ученики</h2>
+  
+      <!-- ПОДВКЛАДКИ -->
+          <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+            <button data-subtab="students-requests" class="subtab-btn active">📨 Заявки <span id="subtab-requests-badge" class="subtab-badge" style="display:none;"></span></button>
+            <button data-subtab="students-list" class="subtab-btn">👥 Список</button>
+         </div>
+  
+      <!-- ПОДСЕКЦИЯ: Заявки (активна по умолчанию) -->
+          <div id="subtab-students-requests" class="subtab-content active"></div>
+  
+      <!-- ПОДСЕКЦИЯ: Список -->
+          <div id="subtab-students-list" class="subtab-content"></div>
+  
+      <!-- ПОДСЕКЦИЯ: Заявки -->
+          <div id="subtab-students-requests" class="subtab-content"></div>
     </section>
-    <section id="tab-lessons" class="tab">
-      <h2>📅 Занятия</h2>
-    </section>
-    <section id="tab-homework" class="tab">
-      <h2>📚 Домашки</h2>
-    </section>
-    <section id="tab-reports" class="tab">
-      <h2>📊 Отчёты</h2>
-    </section>
-    <section id="tab-settings" class="tab">
+        <section id="tab-settings" class="tab">
       <h2>⚙️ Настройки</h2>
+
+      <!-- ПОДВКЛАДКИ -->
+      <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+        <button data-subtab="settings-qr" class="subtab-btn">📱 QR-групп</button>
+        <button data-subtab="settings-passes" class="subtab-btn">🎫 Пропуска</button>
+        <button data-subtab="settings-cleanup" class="subtab-btn">🧹 Очистка БД</button>
+      </div>
+
+      <!-- ПОДСЕКЦИЯ: Группы (главный экран, без подвкладки) -->
+      <div id="subtab-settings-groups" class="subtab-content active"></div>
+
+      <!-- ПОДСЕКЦИЯ: QR-групп -->
+      <div id="subtab-settings-qr" class="subtab-content"></div>
+
+      <!-- ПОДСЕКЦИЯ: Пропуска -->
+      <div id="subtab-settings-passes" class="subtab-content"></div>
+
+      <!-- ПОДСЕКЦИЯ: Очистка БД -->
+      <div id="subtab-settings-cleanup" class="subtab-content"></div>
     </section>
-    <section id="tab-qrcodes" class="tab">
-      <h2>📱 QR-коды групп</h2>
-    </section>
-    <section id="tab-passes" class="tab">
-      <h2>🎫 Пропуска</h2>
-    </section>
-    <section id="tab-announcements" class="tab">
-      <h2>📢 Объявления</h2>
-    </section>
-    <section id="tab-chats" class="tab">
-      <h2>💬 Чаты</h2>
+    <section id="tab-communication" class="tab">
+  <h2>📢 Связь</h2>
+  
+      <!-- ПОДВКЛАДКИ -->
+    <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+      <button data-subtab="comm-announcements" class="subtab-btn active">📢 Объявления</button>
+      <button data-subtab="comm-chats" class="subtab-btn">💬 Чаты <span id="subtab-chats-badge" class="subtab-badge" style="display:none;"></span></button>
+    </div>
+  
+      <!-- ПОДСЕКЦИЯ: Объявления -->
+    <div id="subtab-comm-announcements" class="subtab-content active"></div>
+  
+      <!-- ПОДСЕКЦИЯ: Чаты -->
+    <div id="subtab-comm-chats" class="subtab-content"></div>
     </section>
   </main>
 

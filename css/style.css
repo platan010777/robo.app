@@ -330,3 +330,106 @@ h2 { margin-bottom: 12px; color: var(--primary); }
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================
+   ПОДВКЛАДКИ (subtabs)
+   ============================================ */
+.subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.subtab-btn {
+  background: #fff;
+  color: #4f46e5;
+  border: 2px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+  font-weight: 500;
+  position: relative;
+}
+
+.subtab-btn:hover {
+  transform: translateY(-1px);
+  border-color: #4f46e5;
+}
+
+.subtab-btn.active {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+  box-shadow: 0 4px 12px rgba(79,70,229,.3);
+}
+
+.subtab-badge {
+  display: inline-block;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  margin-left: 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.subtab-content {
+  display: none;
+}
+
+.subtab-content.active {
+  display: block;
+  animation: fadeIn .2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   ВРАЩЕНИЕ ЛОГОТИПА
+   ============================================ */
+/* ============================================
+   🌀 ЛОГОТИП: ЗАПУСК → ВРАЩЕНИЕ → ПАУЗА
+   ============================================ */
+
+/* Фаза 1: Эффектный «запуск» (3 оборота с масштабом) */
+@keyframes logo-start {
+  0%   { transform: rotate(0deg) scale(0.3); opacity: 0; }
+  60%  { transform: rotate(720deg) scale(1.15); opacity: 1; }
+  100% { transform: rotate(1080deg) scale(1); }
+}
+
+/* Фаза 2: Спокойное бесконечное вращение */
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Применяем к логотипу в шапке и в меню */
+.topbar h1 img,
+.side-menu-header img {
+  transform-origin: center center;
+  will-change: transform;
+  /* Запуск 1.5с → пауза 0.2с → бесконечное вращение 8с */
+  animation:
+    logo-start 1.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    logo-spin 8s linear 1.7s infinite;
+}
+
+/* Фаза 3: Пауза + лёгкое увеличение при наведении */
+.topbar h1 img:hover,
+.side-menu-header img:hover {
+  animation-play-state: paused, paused;
+  transform: scale(1.15);
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.7));
+}

@@ -19,17 +19,11 @@ function switchTab(tabName) {
   const activeTab = document.getElementById('tab-' + tabName);
   if (activeTab) activeTab.classList.add('active');
 
-  if (tabName === 'students') renderStudents();
-  if (tabName === 'lessons') renderLessons();
-  if (tabName === 'settings') renderGroups();
-  if (tabName === 'journal') renderJournal();
+  if (tabName === 'students') renderStudentsTab();
+  if (tabName === 'lessons') renderLessonsTab();
+  if (tabName === 'settings') renderSettingsTab();
   if (tabName === 'reports') renderReports();
-  if (tabName === 'qrcodes') renderQRCodes();
-  if (tabName === 'passes') renderPasses();
-  if (tabName === 'requests') renderRequests();
-  if (tabName === 'announcements') renderAnnouncements();
-  if (tabName === 'chats') renderChats();
-  if (tabName === 'homework') renderHomework();
+  if (tabName === 'communication') renderCommunicationTab();
   if (tabName === 'schedule') renderSchedule();
 
   closeMenu();
@@ -176,7 +170,7 @@ async function loadAll() {
 // УЧЕНИКИ
 // ============================================
 async function renderStudents() {
-  const root = document.getElementById('tab-students');
+  const root = document.getElementById('subtab-students-list');
   root.innerHTML = '';
 
   const addBtn = el('button', {
@@ -184,6 +178,7 @@ async function renderStudents() {
     onclick: () => openStudentForm(),
   }, '➕ Добавить ученика');
   root.appendChild(addBtn);
+  
 
   if (!studentsCache.length) {
     root.appendChild(el('p', {}, 'Пока нет учеников. Добавь первого! 👆'));
@@ -216,6 +211,12 @@ async function renderStudents() {
       title: 'Добавить бонус',
       onclick: () => openBonusForm(s),
     }, '🎁'));
+
+    actions.appendChild(el('button', {
+      style: 'background:#3b82f6;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
+      title: 'История бонусов',
+      onclick: () => openBonusHistory(s),
+    }, '📋'));    
     
     actions.appendChild(el('button', {
       style: 'background:#f59e0b;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
@@ -313,7 +314,7 @@ function openStudentForm(student = null) {
 // ЗАНЯТИЯ
 // ============================================
 async function renderLessons() {
-  const root = document.getElementById('tab-lessons');
+  const root = document.getElementById('subtab-lessons-list');
   root.innerHTML = '';
 
   const addBtn = el('button', {
@@ -471,7 +472,7 @@ async function loadFilesStats() {
 // ГРУППЫ (в настройках)
 // ============================================
 async function renderGroups() {
-  const root = document.getElementById('tab-settings');
+  const root = document.getElementById('subtab-settings-groups');
   root.innerHTML = '';
 
   root.appendChild(el('h2', {}, '🏫 Группы'));
@@ -516,71 +517,6 @@ async function renderGroups() {
     list.appendChild(card);
   });
   root.appendChild(list);
-
-  // ============================================
-  // БЛОК: ОЧИСТКА СТАРЫХ ФАЙЛОВ
-  // ============================================
-  const cleanupBox = el('div', {
-    style: `background:#fff;padding:20px;border-radius:16px;
-            box-shadow:0 2px 8px rgba(0,0,0,.08);margin-top:24px;
-            border-left:5px solid #f59e0b;`,
-  });
-
-  cleanupBox.appendChild(el('h3', {
-    style: 'color:#f59e0b;margin-bottom:12px;font-size:1.1rem;',
-  }, '🧹 Очистка старых файлов'));
-
-  cleanupBox.appendChild(el('p', {
-    style: 'color:#6b7280;font-size:0.9rem;margin-bottom:16px;line-height:1.5;',
-  }, 'Удаляет подгруженные файлы домашних заданий старше 30 дней. Сами домашки и оценки сохраняются.'));
-
-  const statsBox = el('div', {
-    id: 'files-stats-box',
-    style: 'background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:16px;',
-  });
-  statsBox.innerHTML = '<div style="color:#9ca3af;font-size:0.9rem;">⏳ Загружаю статистику...</div>';
-  cleanupBox.appendChild(statsBox);
-
-  const cleanupBtn = el('button', {
-    style: `background:#f59e0b;color:#fff;padding:14px 24px;
-            border:none;border-radius:12px;cursor:pointer;
-            font-size:1rem;font-weight:bold;width:100%;`,
-    onclick: async () => {
-      const stats = await db.fetchFilesStats();
-      if (stats.oldCount === 0) {
-        toast('Нет файлов старше 30 дней ✅', 'ok');
-        return;
-      }
-
-      const confirmed = confirm(
-        `Удалить ${stats.oldCount} старый файл(ов)?\n\n` +
-        `Это освободит ${(stats.oldSize / 1024 / 1024).toFixed(2)} МБ.\n\n` +
-        `Домашки и оценки НЕ удаляются.`
-      );
-      if (!confirmed) return;
-
-      cleanupBtn.disabled = true;
-      cleanupBtn.textContent = '⏳ Удаляю...';
-      cleanupBtn.style.opacity = '0.6';
-
-      try {
-        const deletedCount = await db.cleanupOldFiles();
-        toast(`🧹 Удалено файлов: ${deletedCount}`, 'ok');
-        await loadFilesStats();
-      } catch (e) {
-        toast('Ошибка: ' + e.message, 'err');
-      } finally {
-        cleanupBtn.disabled = false;
-        cleanupBtn.textContent = '🧹 Запустить очистку';
-        cleanupBtn.style.opacity = '1';
-      }
-    },
-  }, '🧹 Запустить очистку');
-  cleanupBox.appendChild(cleanupBtn);
-
-  root.appendChild(cleanupBox);
-
-  loadFilesStats();
 }
 
 function openGroupForm(group = null) {
@@ -628,7 +564,7 @@ function openGroupForm(group = null) {
 let currentAttendance = {};
 
 async function renderJournal() {
-  const root = document.getElementById('tab-journal');
+  const root = document.getElementById('subtab-lessons-journal');
   root.innerHTML = '';
 
   if (!groupsCache.length) {
@@ -1119,7 +1055,7 @@ async function buildReport(dateFrom, dateTo, groupId) {
 // QR-КОДЫ ГРУПП
 // ============================================
 async function renderQRCodes() {
-  const root = document.getElementById('tab-qrcodes');
+  const root = document.getElementById('subtab-settings-qr');
   root.innerHTML = '';
 
   if (!groupsCache.length) {
@@ -1256,7 +1192,7 @@ async function downloadQRFromUrl(qrUrl, groupName) {
 // ПРОПУСКА УЧЕНИКОВ (персональные QR)
 // ============================================
 async function renderPasses() {
-  const root = document.getElementById('tab-passes');
+  const root = document.getElementById('subtab-settings-passes');
   root.innerHTML = '';
 
   if (!studentsCache.length) {
@@ -1475,7 +1411,7 @@ async function downloadStudentPass(qrUrl, student, group) {
 // ЗАЯВКИ ОТ УЧЕНИКОВ
 // ============================================
 async function renderRequests() {
-  const root = document.getElementById('tab-requests');
+  const root = document.getElementById('subtab-students-requests');
   root.innerHTML = '';
 
   root.appendChild(el('p', {
@@ -1627,7 +1563,7 @@ function getRequestStatusInfo(status) {
 // ОБЪЯВЛЕНИЯ
 // ============================================
 async function renderAnnouncements() {
-  const root = document.getElementById('tab-announcements');
+  const root = document.getElementById('subtab-comm-announcements');
   root.innerHTML = '';
 
   root.appendChild(el('p', {
@@ -1798,7 +1734,7 @@ let currentChatRoom = null;
 let chatChannel = null;
 
 async function renderChats() {
-  const root = document.getElementById('tab-chats');
+  const root = document.getElementById('subtab-comm-chats');
   root.innerHTML = '';
 
   root.appendChild(el('p', {
@@ -2114,7 +2050,7 @@ function setupTeacherRealtime(room) {
 // ДОМАШКИ (для учителя)
 // ============================================
 async function renderHomework() {
-  const root = document.getElementById('tab-homework');
+  const root = document.getElementById('subtab-lessons-homework');
   root.innerHTML = '';
 
   root.appendChild(el('p', {
@@ -2808,6 +2744,432 @@ function openBonusForm(student) {
   });
 }
 
+// ============================================
+// ПРОСМОТР И УДАЛЕНИЕ БОНУСОВ
+// ============================================
+async function openBonusHistory(student) {
+  // Загружаем бонусы
+  let bonuses = [];
+  try {
+    bonuses = await db.fetchBonusesForStudent(student.id);
+  } catch (e) {
+    toast('Ошибка загрузки бонусов: ' + e.message, 'err');
+    return;
+  }
+
+  const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
+
+  // Заголовок
+  form.appendChild(el('div', {
+    style: 'font-weight:bold;color:#4f46e5;font-size:1.05rem;',
+  }, `🎁 Бонусы — ${student.full_name}`));
+
+  // Считаем сумму
+  const total = bonuses.reduce((sum, b) => sum + b.points, 0);
+  form.appendChild(el('div', {
+    style: `background:${total >= 0 ? '#dcfce7' : '#fee2e2'};
+            color:${total >= 0 ? '#16a34a' : '#ef4444'};
+            padding:10px;border-radius:10px;font-weight:bold;
+            text-align:center;font-size:1rem;`,
+  }, `Итого: ${total > 0 ? '+' : ''}${total} баллов`));
+
+  // Список бонусов
+  if (!bonuses.length) {
+    form.appendChild(el('p', {
+      style: 'text-align:center;color:#9ca3af;padding:20px;',
+    }, '😕 Пока нет бонусов'));
+  } else {
+    const list = el('div', {
+      style: 'display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;',
+    });
+
+    bonuses.forEach(b => {
+      const row = el('div', {
+        style: `background:#f9fafb;border-radius:10px;padding:12px;
+                display:flex;justify-content:space-between;align-items:center;gap:10px;
+                border-left:4px solid ${b.points > 0 ? '#22c55e' : '#ef4444'};`,
+      });
+
+      const info = el('div', { style: 'flex:1;' });
+      info.appendChild(el('div', {
+        style: 'font-size:0.9rem;color:#1f2937;',
+      }, b.reason));
+      info.appendChild(el('div', {
+        style: 'font-size:0.75rem;color:#9ca3af;margin-top:4px;',
+      }, `${b.teacher_name || 'Учитель'} · ${new Date(b.created_at).toLocaleString('ru-RU')}`));
+      row.appendChild(info);
+
+      // Баллы
+      row.appendChild(el('div', {
+        style: `font-weight:bold;font-size:1.1rem;
+                color:${b.points > 0 ? '#22c55e' : '#ef4444'};`,
+      }, `${b.points > 0 ? '+' : ''}${b.points}`));
+
+      // Кнопка удаления
+      row.appendChild(el('button', {
+        style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
+        title: 'Удалить бонус',
+                onclick: async () => {
+          if (!confirm(`Удалить бонус «${b.reason}» (${b.points > 0 ? '+' : ''}${b.points})?`)) return;
+          try {
+            await db.deleteBonus(b.id);
+            toast('🗑️ Бонус удалён', 'ok');
+            // Закрываем текущее модальное окно
+            document.querySelectorAll('.modal.show').forEach(m => m.remove());
+            // Открываем заново с обновлённым списком
+            openBonusHistory(student);
+          } catch (e) {
+            toast('Ошибка: ' + e.message, 'err');
+          }
+        },
+      }, '🗑️'));
+
+      list.appendChild(row);
+    });
+
+    form.appendChild(list);
+  }
+
+  openModal('🎁 Бонусы ученика', form, async () => {
+    // Закрытие — ничего не делаем
+  });
+}
+
+// ============================================
+// ВКЛАДКА "УЧЕНИКИ" С ПОДВКЛАДКАМИ
+// ============================================
+async function renderStudentsTab() {
+  // Инициализация подвкладок (только один раз)
+  if (!document.getElementById('subtabs-init')) {
+    const marker = document.createElement('div');
+    marker.id = 'subtabs-init';
+    marker.style.display = 'none';
+    document.body.appendChild(marker);
+    
+    document.querySelectorAll('.subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchSubtab(btn.dataset.subtab);
+      });
+    });
+  }
+  
+  // По умолчанию — "Список"
+  const currentSubtab = document.querySelector('.subtab-btn.active')?.dataset.subtab || 'students-list';
+  
+  if (currentSubtab === 'students-list') {
+    await renderStudents();
+  } else {
+    await renderRequests();
+  }
+  
+  // Обновляем бейдж заявок
+  await updateRequestsBadge();
+}
+
+function switchSubtab(subtabName) {
+  // Обновляем активную кнопку
+  document.querySelectorAll('.subtab-btn').forEach(b => {
+    if (b.dataset.subtab === subtabName) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  
+  // Показываем нужный контент
+  document.querySelectorAll('.subtab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById('subtab-' + subtabName);
+  if (target) target.classList.add('active');
+  
+  // Загружаем данные
+  if (subtabName === 'students-list') renderStudents();
+  if (subtabName === 'students-requests') renderRequests();
+}
+
+async function updateRequestsBadge() {
+  try {
+    const requests = await db.fetchAllRequests();
+    const pendingCount = requests.filter(r => !r.is_approved).length;
+    const badge = document.getElementById('subtab-requests-badge');
+    
+    if (!badge) return;
+    
+    if (pendingCount > 0) {
+      badge.textContent = pendingCount;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (e) {
+    console.error('Ошибка бейджа заявок:', e);
+  }
+}
+
+// ============================================
+// ВКЛАДКА "ЗАНЯТИЯ" С ПОДВКЛАДКАМИ
+// ============================================
+async function renderLessonsTab() {
+  // Инициализация подвкладок (только один раз)
+  if (!document.getElementById('subtabs-lessons-init')) {
+    const marker = document.createElement('div');
+    marker.id = 'subtabs-lessons-init';
+    marker.style.display = 'none';
+    document.body.appendChild(marker);
+
+    const lessonsSection = document.getElementById('tab-lessons');
+    lessonsSection.querySelectorAll('.subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchLessonsSubtab(btn.dataset.subtab);
+      });
+    });
+  }
+
+  // На входе — всегда показываем список (никакая подвкладка не активна)
+  document.querySelectorAll('#tab-lessons .subtab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#tab-lessons .subtab-content').forEach(c => c.classList.remove('active'));
+
+  const listBox = document.getElementById('subtab-lessons-list');
+  if (listBox) listBox.classList.add('active');
+
+  await renderLessons();
+}
+
+function switchLessonsSubtab(subtabName) {
+  const isCurrentlyActive = document
+    .querySelector(`#tab-lessons .subtab-btn[data-subtab="${subtabName}"]`)
+    ?.classList.contains('active');
+
+  // Если кликнули на уже активную — возвращаемся к списку
+  if (isCurrentlyActive) {
+    document.querySelectorAll('#tab-lessons .subtab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#tab-lessons .subtab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('subtab-lessons-list')?.classList.add('active');
+    renderLessons();
+    return;
+  }
+
+  // Иначе — переключаемся на выбранную
+  document.querySelectorAll('#tab-lessons .subtab-btn').forEach(b => {
+    if (b.dataset.subtab === subtabName) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+
+  document.querySelectorAll('#tab-lessons .subtab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById('subtab-' + subtabName);
+  if (target) target.classList.add('active');
+
+  if (subtabName === 'lessons-journal') renderJournal();
+  if (subtabName === 'lessons-homework') renderHomework();
+}
+
+// ============================================
+// ВКЛАДКА "СВЯЗЬ" С ПОДВКЛАДКАМИ
+// ============================================
+async function renderCommunicationTab() {
+  // Инициализация подвкладок (только один раз)
+  if (!document.getElementById('subtabs-comm-init')) {
+    const marker = document.createElement('div');
+    marker.id = 'subtabs-comm-init';
+    marker.style.display = 'none';
+    document.body.appendChild(marker);
+    
+    const section = document.getElementById('tab-communication');
+    section.querySelectorAll('.subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchCommunicationSubtab(btn.dataset.subtab);
+      });
+    });
+  }
+  
+  // По умолчанию — "Объявления"
+  const activeBtn = document.querySelector('#tab-communication .subtab-btn.active');
+  const currentSubtab = activeBtn?.dataset.subtab || 'comm-announcements';
+  
+  if (currentSubtab === 'comm-announcements') {
+    await renderAnnouncements();
+  } else if (currentSubtab === 'comm-chats') {
+    await renderChats();
+  }
+  
+  // Обновляем бейдж непрочитанных чатов
+  await updateChatsBadge();
+}
+
+function switchCommunicationSubtab(subtabName) {
+  document.querySelectorAll('#tab-communication .subtab-btn').forEach(b => {
+    if (b.dataset.subtab === subtabName) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  
+  document.querySelectorAll('#tab-communication .subtab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById('subtab-' + subtabName);
+  if (target) target.classList.add('active');
+  
+  if (subtabName === 'comm-announcements') renderAnnouncements();
+  if (subtabName === 'comm-chats') renderChats();
+}
+
+async function updateChatsBadge() {
+  try {
+    // Считаем все непрочитанные
+    const rooms = {};
+    rooms['global'] = await db.getTeacherUnreadCount('global');
+    
+    for (const g of groupsCache) {
+      rooms['group:' + g.id] = await db.getTeacherUnreadCount('group:' + g.id);
+    }
+    
+    const total = Object.values(rooms).reduce((sum, n) => sum + n, 0);
+    const badge = document.getElementById('subtab-chats-badge');
+    
+    if (!badge) return;
+    
+    if (total > 0) {
+      badge.textContent = total > 99 ? '99+' : total;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (e) {
+    console.error('Ошибка бейджа чатов:', e);
+  }
+}
+
+// ============================================
+// ВКЛАДКА "НАСТРОЙКИ" С ПОДВКЛАДКАМИ
+// ============================================
+async function renderSettingsTab() {
+  // Инициализация подвкладок (только один раз)
+  if (!document.getElementById('subtabs-settings-init')) {
+    const marker = document.createElement('div');
+    marker.id = 'subtabs-settings-init';
+    marker.style.display = 'none';
+    document.body.appendChild(marker);
+
+    const section = document.getElementById('tab-settings');
+    section.querySelectorAll('.subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchSettingsSubtab(btn.dataset.subtab);
+      });
+    });
+  }
+
+  // На входе — всегда показываем группы (никакая подвкладка не активна)
+  document.querySelectorAll('#tab-settings .subtab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#tab-settings .subtab-content').forEach(c => c.classList.remove('active'));
+
+  const groupsBox = document.getElementById('subtab-settings-groups');
+  if (groupsBox) groupsBox.classList.add('active');
+
+  await renderGroups();
+
+  const activeBtn = document.querySelector('#tab-settings .subtab-btn.active');
+  const currentSubtab = activeBtn?.dataset.subtab || 'settings-groups';
+
+  if (currentSubtab === 'settings-groups') await renderGroups();
+  else if (currentSubtab === 'settings-qr') await renderQRCodes();
+  else if (currentSubtab === 'settings-passes') await renderPasses();
+  else if (currentSubtab === 'settings-cleanup') await renderCleanup();
+}
+
+function switchSettingsSubtab(subtabName) {
+  const isCurrentlyActive = document
+    .querySelector(`#tab-settings .subtab-btn[data-subtab="${subtabName}"]`)
+    ?.classList.contains('active');
+
+  // Если кликнули на уже активную — возвращаемся к группам
+  if (isCurrentlyActive) {
+    document.querySelectorAll('#tab-settings .subtab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#tab-settings .subtab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('subtab-settings-groups')?.classList.add('active');
+    renderGroups();
+    return;
+  }
+
+  // Иначе — переключаемся на выбранную
+  document.querySelectorAll('#tab-settings .subtab-btn').forEach(b => {
+    if (b.dataset.subtab === subtabName) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+
+  document.querySelectorAll('#tab-settings .subtab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById('subtab-' + subtabName);
+  if (target) target.classList.add('active');
+
+  if (subtabName === 'settings-qr') renderQRCodes();
+  if (subtabName === 'settings-passes') renderPasses();
+  if (subtabName === 'settings-cleanup') renderCleanup();
+}
+
+// ============================================
+// ОЧИСТКА БД (отдельная подвкладка)
+// ============================================
+async function renderCleanup() {
+  const root = document.getElementById('subtab-settings-cleanup');
+  root.innerHTML = '';
+
+  root.appendChild(el('p', {
+    style: 'color:#666;margin-bottom:16px;',
+  }, '🧹 Ручная очистка. Удалит файлы старше 30 дней. Расписание автоочистки уже работает.'));
+  root.appendChild(el('p', {
+    style: 'color:#6b7280;font-size:0.9rem;margin-bottom:16px;line-height:1.5;',
+  }, 'Удаляются только подгруженные файлы домашних заданий. Сами домашки и оценки сохраняются.'));
+
+  const cleanupBox = el('div', {
+    style: `background:#fff;padding:20px;border-radius:16px;
+            box-shadow:0 2px 8px rgba(0,0,0,.08);
+            border-left:5px solid #f59e0b;`,
+  });
+
+  cleanupBox.appendChild(el('h3', {
+    style: 'color:#f59e0b;margin-bottom:12px;font-size:1.1rem;',
+  }, '🧹 Очистка старых файлов'));
+
+  const statsBox = el('div', {
+    id: 'files-stats-box',
+    style: 'background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:16px;',
+  });
+  statsBox.innerHTML = '<div style="color:#9ca3af;font-size:0.9rem;">⏳ Загружаю статистику...</div>';
+  cleanupBox.appendChild(statsBox);
+
+  const cleanupBtn = el('button', {
+    style: `background:#f59e0b;color:#fff;padding:14px 24px;
+            border:none;border-radius:12px;cursor:pointer;
+            font-size:1rem;font-weight:bold;width:100%;`,
+    onclick: async () => {
+      const stats = await db.fetchFilesStats();
+      if (stats.oldCount === 0) {
+        toast('Нет файлов старше 30 дней ✅', 'ok');
+        return;
+      }
+
+      const confirmed = confirm(
+        `Точно удалить ${stats.oldCount} файл(ов) старше 30 дней?\n\n` +
+        `Это освободит ${(stats.oldSize / 1024 / 1024).toFixed(2)} МБ.\n\n` +
+        `Домашки и оценки НЕ удаляются.`
+      );
+      if (!confirmed) return;
+
+      cleanupBtn.disabled = true;
+      cleanupBtn.textContent = '⏳ Удаляю...';
+      cleanupBtn.style.opacity = '0.6';
+
+      try {
+        const deletedCount = await db.cleanupOldFiles();
+        toast(`🧹 Удалено файлов: ${deletedCount}`, 'ok');
+        await loadFilesStats();
+      } catch (e) {
+        toast('Ошибка: ' + e.message, 'err');
+      } finally {
+        cleanupBtn.disabled = false;
+        cleanupBtn.textContent = '🧹 Запустить очистку';
+        cleanupBtn.style.opacity = '1';
+      }
+    },
+  }, '🧹 Запустить очистку');
+  cleanupBox.appendChild(cleanupBtn);
+
+  root.appendChild(cleanupBox);
+  loadFilesStats();
+}
+
 // Экспорт для отладки
 window.__app = {
   groupsCache,
@@ -2822,4 +3184,6 @@ window.__app = {
   renderChats,
   renderHomework,
   renderSchedule,
+  renderSettingsTab,
+  renderCleanup,
 };
