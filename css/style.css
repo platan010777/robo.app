@@ -414,20 +414,17 @@ h2 { margin-bottom: 12px; color: var(--primary); }
   to   { transform: rotate(360deg); }
 }
 
-/* Применяем к логотипу в шапке и в меню */
-.topbar h1 img,
-.side-menu-header img {
+/* Применяем ко ВСЕМ логотипам на ВСЕХ страницах */
+img[src*="logo"] {
   transform-origin: center center;
   will-change: transform;
-  /* Запуск 1.5с → пауза 0.2с → бесконечное вращение 8с */
   animation:
     logo-start 1.5s cubic-bezier(0.34, 1.56, 0.64, 1),
     logo-spin 8s linear 1.7s infinite;
 }
 
-/* Фаза 3: Пауза + лёгкое увеличение при наведении */
-.topbar h1 img:hover,
-.side-menu-header img:hover {
+/* Пауза + лёгкое увеличение при наведении */
+img[src*="logo"]:hover {
   animation-play-state: paused, paused;
   transform: scale(1.15);
   transition: transform 0.3s ease;
