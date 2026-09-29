@@ -70,10 +70,6 @@ main {
 .tab { display: none; }
 .tab.active { display: block; animation: fadeIn .2s ease; }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 h2 { margin-bottom: 12px; color: var(--primary); }
 
@@ -324,11 +320,6 @@ h2 { margin-bottom: 12px; color: var(--primary); }
 .student-tab.active {
   display: block;
   animation: fadeIn .2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ============================================
