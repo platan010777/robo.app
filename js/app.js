@@ -1832,7 +1832,7 @@ async function openTeacherRoom(roomKey) {
   currentChatRoom = roomKey;
   const room = chatRooms[roomKey];
 
-  const root = document.getElementById('tab-chats');
+  const root = document.getElementById('subtab-comm-chats') || document.getElementById('tab-communication');
   const sidebar = root.querySelector('div[style*="grid-template-columns"] > div');
   if (sidebar) {
     const newSidebar = sidebar.cloneNode(false);
