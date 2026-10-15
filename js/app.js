@@ -4,6 +4,44 @@ import { el, toast, openModal, confirmDialog } from './ui.js';
 import './export.js';
 
 // ============================================
+// 🔑 ПРОВЕРКА РОЛИ ПЕДСОВЕТА (?council= в URL)
+// ============================================
+const urlParams = new URLSearchParams(window.location.search);
+const councilToken = urlParams.get('council');
+let councilMode = false;
+
+if (councilToken) {
+  try {
+    const { data, error } = await supabase.rpc('validate_council_token', { p_token: councilToken });
+
+    if (!error && data && data.length && data[0].is_valid) {
+      councilMode = true;
+      document.body.dataset.role = 'council';
+      console.log('✅ Режим ПЕДСОВЕТА активирован:', data[0].label);
+
+      // Прячем модалку авторизации
+      document.getElementById('auth-screen')?.classList.remove('show');
+
+      // Показываем в topbar имя
+      const userInfoEl = document.getElementById('user-info');
+      if (userInfoEl) {
+        userInfoEl.innerHTML = `<span>👥 ${data[0].label}</span>`;
+      }
+
+      // Загружаем данные и открываем вкладку посещаемости
+      setTimeout(async () => {
+        await loadAll();
+        switchTab('attendance');
+      }, 100);
+    } else {
+      console.warn('⚠️ Токен педсовета невалиден');
+    }
+  } catch (e) {
+    console.error('Ошибка проверки токена педсовета:', e);
+  }
+}
+
+// ============================================
 // НАВИГАЦИЯ ПО ВКЛАДКАМ (вкладки + меню)
 // ============================================
 function switchTab(tabName) {
@@ -25,6 +63,7 @@ function switchTab(tabName) {
   if (tabName === 'reports') renderReports();
   if (tabName === 'communication') renderCommunicationTab();
   if (tabName === 'schedule') renderSchedule();
+  if (tabName === 'attendance') renderCouncilAttendance();
 
   closeMenu();
 }
@@ -36,6 +75,16 @@ document.querySelectorAll('.tabs button').forEach(btn => {
 document.querySelectorAll('.side-menu-item').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
+
+// При загрузке — активируем вкладку, которая уже помечена как active в HTML
+// Используем setTimeout вместо DOMContentLoaded, т.к. модуль загружается ПОСЛЕ этого события
+setTimeout(() => {
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) {
+    const tabName = activeTab.id.replace('tab-', '');
+    switchTab(tabName);
+  }
+}, 200);
 
 // ============================================
 // БУРГЕР-МЕНЮ
@@ -101,7 +150,13 @@ document.getElementById('auth-login').addEventListener('click', async () => {
   }
   showUser(data.user);
   authScreen.classList.remove('show');
-  loadAll();
+  loadAll().then(() => {
+    const activeTab = document.querySelector('.tab.active');
+    if (activeTab) {
+      const tabName = activeTab.id.replace('tab-', '');
+      switchTab(tabName);
+    }
+  });
 });
 
 userInfo.addEventListener('click', async () => {
@@ -133,7 +188,13 @@ function showUser(user) {
 supabase.auth.getSession().then(({ data }) => {
   if (data.session) {
     showUser(data.session.user);
-    loadAll();
+    loadAll().then(() => {
+      const activeTab = document.querySelector('.tab.active');
+      if (activeTab) {
+        const tabName = activeTab.id.replace('tab-', '');
+        switchTab(tabName);
+      }
+    });
   } else {
     authScreen.classList.add('show');
   }
@@ -1931,7 +1992,7 @@ async function loadTeacherMessages(room) {
 }
 
 function makeTeacherMessageEl(msg) {
-  const isTeacher = msg.author_type === 'teacher';
+  const isTeacher = msg.author_type === 'teacher' || msg.author_type === 'council';
   const isDeleted = msg.is_deleted;
 
   const wrapper = el('div', {
@@ -1943,7 +2004,8 @@ function makeTeacherMessageEl(msg) {
 
   const name = el('div', {
     style: 'font-size:0.75rem;color:#9ca3af;margin-bottom:3px;padding:0 8px;',
-  }, (isTeacher ? `👨‍🏫 ${msg.author_name}` : `👤 ${msg.author_name}`)
+  }, (msg.author_type === 'council' ? `👥 ${msg.author_name}` :
+ (isTeacher ? `👨‍🏫 ${msg.author_name}` : `👤 ${msg.author_name}`))
      + (isDeleted ? ' 🗑️ (удалено)' : ''));
   wrapper.appendChild(name);
 
@@ -2020,8 +2082,13 @@ async function sendTeacherMsg() {
 
   input.disabled = true;
   try {
-    const teacherName = currentUser?.user_metadata?.full_name || currentUser?.email || 'Учитель';
-    await db.sendTeacherMessage(room.type, room.id, text, teacherName);
+    const isCouncil = document.body.dataset.role === 'council';
+    const authorName = isCouncil
+      ? 'Педсовет'
+      : (currentUser?.user_metadata?.full_name || currentUser?.email || 'Учитель');
+    const authorType = isCouncil ? 'council' : 'teacher';
+
+    await db.sendTeacherMessage(room.type, room.id, text, authorName, authorType);
     input.value = '';
     input.style.height = 'auto';
   } catch (e) {
@@ -2590,6 +2657,15 @@ async function renderSchedule() {
     },
   }, 'Следующая →'));
 
+    // 🖨️ Кнопка печати (только для педсовета — CSS скроет у учителя)
+  const printBtn = el('button', {
+    style: 'background:#22c55e;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
+    onclick: () => printSchedule(),
+  }, '🖨️ Распечатать');
+  printBtn.className = 'schedule-print-btn';
+  header.appendChild(printBtn);
+
+
   const mondayThisWeek = getMondayOfWeek(new Date());
   if (currentWeekStart.getTime() !== mondayThisWeek.getTime()) {
     header.appendChild(el('button', {
@@ -3070,6 +3146,7 @@ async function renderSettingsTab() {
   else if (currentSubtab === 'settings-qr') await renderQRCodes();
   else if (currentSubtab === 'settings-passes') await renderPasses();
   else if (currentSubtab === 'settings-cleanup') await renderCleanup();
+  else if (currentSubtab === 'settings-council') await renderCouncilToken();
 }
 
 function switchSettingsSubtab(subtabName) {
@@ -3099,6 +3176,7 @@ function switchSettingsSubtab(subtabName) {
   if (subtabName === 'settings-qr') renderQRCodes();
   if (subtabName === 'settings-passes') renderPasses();
   if (subtabName === 'settings-cleanup') renderCleanup();
+  if (subtabName === 'settings-council') renderCouncilToken();
 }
 
 // ============================================
@@ -3173,6 +3251,819 @@ async function renderCleanup() {
   loadFilesStats();
 }
 
+// ============================================
+// 📊 ВКЛАДКА "ПОСЕЩАЕМОСТЬ" (для педсовета)
+// ============================================
+async function renderCouncilAttendance() {
+  const root = document.getElementById('council-attendance-content');
+  if (!root) return;
+  root.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:40px;">⏳ Загружаю данные...</p>';
+
+  try {
+    const { data: rating, error } = await supabase.rpc('get_council_top');
+    if (error) throw error;
+
+    if (!rating || !rating.length) {
+      root.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:40px;">😕 Нет данных</p>';
+      return;
+    }
+
+    root.innerHTML = '';
+
+    // Фильтры периода
+    const filterBox = el('div', {
+      style: 'background:#fff;padding:16px;border-radius:12px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
+    });
+
+    filterBox.appendChild(el('div', {
+      style: 'font-weight:bold;color:#4f46e5;margin-bottom:12px;',
+    }, '📅 Период'));
+
+    const periodBtns = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' });
+    const periods = [
+      { key: 'week', label: '📅 Неделя' },
+      { key: 'month', label: '📆 Месяц' },
+      { key: 'year', label: '📊 Учебный год' },
+    ];
+    periods.forEach(p => {
+      periodBtns.appendChild(el('button', {
+        style: 'background:#eef2ff;color:#4f46e5;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:0.9rem;font-weight:bold;',
+        onclick: () => loadPeriodStats(p.key),
+      }, p.label));
+    });
+    filterBox.appendChild(periodBtns);
+    root.appendChild(filterBox);
+
+    // Таблица рейтинга
+    const tableBox = el('div', {
+      style: 'background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px;',
+    });
+    tableBox.appendChild(el('h3', {
+      style: 'color:#4f46e5;margin-bottom:12px;font-size:1.1rem;',
+    }, '🏆 Рейтинг учеников (всего)'));
+
+    tableBox.appendChild(makeCouncilRatingTable(rating));
+    root.appendChild(tableBox);
+
+    // Кнопки экспорта
+    const exportBox = el('div', {
+      style: 'display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;',
+    });
+    exportBox.appendChild(el('button', {
+      style: 'background:#16a34a;color:#fff;padding:12px 20px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;flex:1;',
+      onclick: () => exportCouncilExcel(rating),
+    }, '📥 Скачать Excel'));
+    exportBox.appendChild(el('button', {
+      style: 'background:#dc2626;color:#fff;padding:12px 20px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;flex:1;',
+      onclick: () => exportCouncilPDF(rating),
+    }, '📥 Скачать PDF'));
+    root.appendChild(exportBox);
+
+  } catch (e) {
+    console.error('Ошибка посещаемости:', e);
+    root.innerHTML = `<p style="color:#ef4444;text-align:center;padding:20px;">Ошибка: ${e.message}</p>`;
+  }
+}
+
+// Загрузка статистики за период
+async function loadPeriodStats(period) {
+  const today = new Date();
+  let dateFrom, dateTo;
+
+  if (period === 'week') {
+    const day = today.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    dateFrom = new Date(today);
+    dateFrom.setDate(dateFrom.getDate() + diff);
+    dateTo = new Date(dateFrom);
+    dateTo.setDate(dateTo.getDate() + 6);
+  } else if (period === 'month') {
+    dateFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+    dateTo = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  } else if (period === 'year') {
+    dateFrom = new Date(today.getFullYear(), 0, 1);
+    dateTo = new Date(today.getFullYear(), 11, 31);
+  }
+
+  const fromStr = formatLocalDate(dateFrom);
+  const toStr = formatLocalDate(dateTo);
+
+  const root = document.getElementById('council-attendance-content');
+  const oldPeriodBox = root.querySelector('.period-stats');
+  if (oldPeriodBox) oldPeriodBox.remove();
+
+  try {
+    const { data, error } = await supabase.rpc('get_council_attendance', {
+      p_date_from: fromStr,
+      p_date_to: toStr,
+    });
+    if (error) throw error;
+
+    const periodBox = el('div', {
+      style: 'background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px;',
+    });
+    periodBox.className = 'period-stats';
+    periodBox.appendChild(el('h3', {
+      style: 'color:#4f46e5;margin-bottom:12px;font-size:1.1rem;',
+    }, `📊 За период: ${fromStr} → ${toStr}`));
+
+    if (!data || !data.length) {
+      periodBox.appendChild(el('p', { style: 'color:#9ca3af;' }, '😕 Нет данных за период'));
+    } else {
+      periodBox.appendChild(makeCouncilRatingTable(data));
+    }
+
+    root.appendChild(periodBox);
+
+  } catch (e) {
+    console.error('Ошибка периода:', e);
+    toast('Ошибка загрузки периода: ' + e.message, 'err');
+  }
+}
+
+// Таблица рейтинга (для педсовета)
+function makeCouncilRatingTable(data) {
+  const table = el('div', { style: 'overflow-x:auto;' });
+
+  const header = el('div', {
+    style: 'display:grid;grid-template-columns:40px 1fr 80px 60px 80px 60px;gap:8px;padding:10px;background:#eef2ff;border-radius:10px;font-weight:bold;font-size:0.85rem;color:#4f46e5;',
+  });
+  ['#', 'Ученик', '🏫 Группа', '✅ Был', '📊 %', '🏆 Балл'].forEach(h => {
+    header.appendChild(el('div', { style: 'text-align:center;' }, h));
+  });
+  table.appendChild(header);
+
+  data.forEach((s, idx) => {
+    const row = el('div', {
+      style: `display:grid;grid-template-columns:40px 1fr 80px 60px 80px 60px;gap:8px;padding:10px;background:${idx % 2 ? '#f9fafb' : '#fff'};border-radius:8px;font-size:0.9rem;align-items:center;`,
+    });
+
+    const place = s.place || (idx + 1);
+    const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : place + '.';
+
+    row.appendChild(el('div', { style: 'text-align:center;font-weight:bold;' }, String(medal)));
+    row.appendChild(el('div', { style: 'font-weight:bold;' }, s.full_name || '—'));
+    row.appendChild(el('div', { style: 'text-align:center;font-size:0.85rem;color:#666;' }, s.group_name || '—'));
+    row.appendChild(el('div', { style: 'text-align:center;color:#22c55e;font-weight:bold;' }, String(s.present || 0)));
+    row.appendChild(el('div', { style: 'text-align:center;font-weight:bold;' }, (s.attendance_percent || 0) + '%'));
+    row.appendChild(el('div', { style: 'text-align:center;color:#4f46e5;font-weight:bold;' }, String(s.rating || 0)));
+
+    table.appendChild(row);
+  });
+
+  return table;
+}
+
+// ============================================
+// 📥 ЭКСПОРТ EXCEL (настоящий .xlsx с форматированием)
+// ============================================
+function exportCouncilExcel(data) {
+  try {
+    if (typeof XLSX === 'undefined') {
+      throw new Error('Библиотека XLSX не загружена. Проверь интернет и обнови страницу (F5).');
+    }
+
+    // === ПОДГОТОВКА ДАННЫХ ===
+    const rows = data.map((s, idx) => ({
+      '№': s.place || (idx + 1),
+      'ФИО': s.full_name || '',
+      'Группа': s.group_name || '—',
+      'Был': s.present || 0,
+      'Опоздал': s.late || 0,
+      'Пропустил': s.absent || 0,
+      'Саботаж': s.sabotage || 0,
+      'Посещаемость %': s.attendance_percent || 0,
+      'Домашки': s.homework_total || 0,
+      'Бонусы': s.bonus_total || 0,
+      'Рейтинг': s.rating || 0,
+    }));
+
+        // === СОЗДАЁМ ЛИСТ ===
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // === ОПРЕДЕЛЯЕМ ДИАПАЗОН (для циклов ниже) ===
+    const range = XLSX.utils.decode_range(ws['!ref']);  // ← ПЕРЕСТАВИЛИ СЮДА
+
+    // === АВТО-ШИРИНА КОЛОНОК ===
+    const colMaxWidths = [];
+
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      let maxLen = 10;  // минимум
+      for (let R = range.s.r; R <= range.e.r; R++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+        const cell = ws[cellAddr];
+        if (!cell) continue;
+
+        const value = String(cell.v || '');
+        // Эмодзи считаем как 2 символа
+        const len = value.replace(/[\u{1F300}-\u{1FAFF}]/gu, 'XX').length;
+        if (len > maxLen) maxLen = len;
+      }
+      colMaxWidths.push(maxLen + 2);  // +2 для отступа
+    }
+
+        // Фиксированные ширины — гарантия
+    const colWidths = [
+      { wch: 8 },   // №
+      { wch: 45 },  // ФИО
+      { wch: 25 },  // Группа
+      { wch: 8 },   // Был
+      { wch: 10 },  // Опоздал
+      { wch: 12 },  // Пропустил
+      { wch: 10 },  // Саботаж
+      { wch: 18 },  // Посещаемость %
+      { wch: 12 },  // Домашки
+      { wch: 10 },  // Бонусы
+      { wch: 12 },  // Рейтинг
+    ];
+    ws['!cols'] = colWidths;
+
+    // === НАСТРОЙКА ЯЧЕЕК (обводка, шрифт) ===
+
+      for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+        const cell = ws[cellAddr];
+        if (!cell) continue;
+
+        // === БАЗОВЫЙ СТИЛЬ: обводка + шрифт ===
+        cell.s = {
+          border: {
+            top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+            bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+            left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+            right: { style: 'thin', color: { rgb: 'E5E7EB' } },
+          },
+          font: { name: 'Arial', sz: 11 },
+          alignment: { vertical: 'center', horizontal: 'center' },  // ← ПО ЦЕНТРУ по умолчанию
+        };
+
+        // === 1. ЗАГОЛОВОК (строка 0): ЖИРНЫЙ + ПО ЦЕНТРУ ===
+        if (R === 0) {
+          cell.s.font = { name: 'Arial', sz: 12, bold: true, color: { rgb: 'FFFFFF' } };
+          cell.s.fill = { fgColor: { rgb: '4F46E5' } };
+          cell.s.alignment = { vertical: 'center', horizontal: 'center' };
+        }
+
+        // === 2. ФИО (колонка B = 1, со строки 2): ВЛЕВО ===
+        if (R > 0 && C === 1) {
+          cell.s.alignment = { vertical: 'center', horizontal: 'left' };
+        }
+
+        // === 3. Рейтинг (K = 10): ЖИРНЫЙ, СИНИЙ, ПО ЦЕНТРУ ===
+        if (R > 0 && C === 10) {
+          cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '4F46E5' } };
+          cell.s.alignment = { vertical: 'center', horizontal: 'center' };
+        }
+
+        // === «Был» (D = 3): ЗЕЛЁНЫЙ, ЖИРНЫЙ ===
+        if (R > 0 && C === 3) {
+          cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '22C55E' } };
+        }
+
+        // === «Пропустил» (F = 5): КРАСНЫЙ, ЖИРНЫЙ ===
+        if (R > 0 && C === 5) {
+          cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: 'EF4444' } };
+        }
+
+        // === «Саботаж» (G = 6): ТЁМНО-КРАСНЫЙ, ЖИРНЫЙ ===
+        if (R > 0 && C === 6) {
+          cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '7F1D1D' } };
+        }
+      }
+    }
+
+    // === МЕДАЛИ В ПЕРВОМ СТОЛБЦЕ ===
+    if (rows.length >= 1 && ws['A2']) {
+      ws['A2'] = { t: 's', v: '🥇 1' };
+    }
+    if (rows.length >= 2 && ws['A3']) {
+      ws['A3'] = { t: 's', v: '🥈 2' };
+    }
+    if (rows.length >= 3 && ws['A4']) {
+      ws['A4'] = { t: 's', v: '🥉 3' };
+    }
+
+    // === СОЗДАЁМ КНИГУ ===
+    const wb = XLSX.utils.book_new();
+
+    // Название листа
+    XLSX.utils.book_append_sheet(wb, ws, 'Рейтинг');
+
+    // === ДОБАВЛЯЕМ ЛИСТ-СПРАВКУ (инфо) ===
+    const infoWs = XLSX.utils.aoa_to_sheet([
+      ['🤖 КЛАСС РОБОТОТЕХНИКИ'],
+      ['Рейтинг учеников — Педсовет'],
+      [],
+      ['Дата формирования:', new Date().toLocaleDateString('ru-RU')],
+      ['Время:', new Date().toLocaleTimeString('ru-RU')],
+      [],
+      ['Формула рейтинга:'],
+      ['• Был × 10 очков'],
+      ['• Опоздал × 5 очков'],
+      ['• Саботаж × −10 очков'],
+      ['• + баллы за домашки'],
+      ['• + бонусы от учителя'],
+    ]);
+    infoWs['!cols'] = [{ wch: 25 }, { wch: 30 }];
+    infoWs['A1'].s = { font: { name: 'Arial', sz: 14, bold: true, color: { rgb: '4F46E5' } } };
+    infoWs['A2'].s = { font: { name: 'Arial', sz: 11, color: { rgb: '7C3AED' } } };
+
+    XLSX.utils.book_append_sheet(wb, infoWs, 'Справка');
+
+    // === СОХРАНЯЕМ ФАЙЛ ===
+    const fileName = `Педсовет_Рейтинг_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast('📥 Excel-отчёт скачан (.xlsx)!', 'ok');
+  } catch (e) {
+    console.error('Ошибка экспорта Excel:', e);
+    toast('Ошибка экспорта: ' + e.message, 'err');
+  }
+}
+
+// Экспорт PDF для педсовета
+function exportCouncilPDF(data) {
+  try {
+    const today = new Date().toLocaleDateString('ru-RU');
+
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Рейтинг учеников — Педсовет</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #4f46e5; text-align: center; }
+          .date { text-align: center; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #4f46e5; color: #fff; padding: 10px; text-align: left; font-size: 13px; }
+          td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+          tr:nth-child(even) { background: #f9fafb; }
+          .medal { font-size: 16px; }
+        </style>
+      </head>
+      <body>
+        <h1>🤖 КЛАСС РОБОТОТЕХНИКИ — Рейтинг учеников</h1>
+        <div class="date">Дата: ${today}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>ФИО</th><th>Группа</th><th>Был</th><th>%</th><th>Рейтинг</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    data.forEach((s, idx) => {
+      const place = s.place || (idx + 1);
+      const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : place;
+      html += `
+        <tr>
+          <td class="medal">${medal}</td>
+          <td>${s.full_name || '—'}</td>
+          <td>${s.group_name || '—'}</td>
+          <td>${s.present || 0}</td>
+          <td>${s.attendance_percent || 0}%</td>
+          <td><b>${s.rating || 0}</b></td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table></body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+
+    toast('📥 PDF готов к печати!', 'ok');
+  } catch (e) {
+    toast('Ошибка экспорта: ' + e.message, 'err');
+  }
+}
+
+// ============================================
+// 🔑 ДОСТУП ПЕДСОВЕТА (управление токеном)
+// ============================================
+async function renderCouncilToken() {
+  const root = document.getElementById('subtab-settings-council');
+  if (!root) return;
+  root.innerHTML = '';
+
+  root.appendChild(el('p', {
+    style: 'color:#666;margin-bottom:16px;line-height:1.5;',
+  }, '🔑 QR-код для входа педсовета. Распечатай и повесь в учительской — тётки сканируют и заходят без пароля.'));
+
+  try {
+    const { data, error } = await supabase
+      .from('council_tokens')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    if (!data || !data.length) {
+      root.appendChild(el('button', {
+        style: 'background:#22c55e;color:#fff;padding:14px 24px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;font-weight:bold;width:100%;',
+        onclick: () => createCouncilToken(),
+      }, '➕ Создать токен педсовета'));
+      return;
+    }
+
+    const token = data[0];
+    const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+    const councilUrl = `${baseUrl}index.html?council=${token.token}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(councilUrl)}&color=4f46e5&bgcolor=ffffff&margin=20`;
+    const logoUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'icons/logo.svg?v=210';
+
+    // ============================================
+    // 🎨 ПЕЧАТНЫЙ ШАБЛОН ДЛЯ УЧИТЕЛЬСКОЙ
+    // ============================================
+    const card = el('div', {
+      id: 'council-print-card',
+      style: `
+        background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+        border-radius: 24px;
+        padding: 40px 32px;
+        box-shadow: 0 8px 32px rgba(79,70,229,.12);
+        text-align: center;
+        max-width: 720px;
+        margin: 0 auto;
+        border: 2px solid #e0e7ff;
+      `,
+    });
+
+    // === ШАПКА: Лого + Название ===
+    const header = el('div', {
+      style: `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding-bottom: 24px;
+        border-bottom: 2px dashed #c7d2fe;
+        margin-bottom: 24px;
+      `,
+    });
+
+    header.appendChild(el('img', {
+      src: logoUrl,
+      alt: 'Лого',
+      style: 'width:72px;height:72px;',
+    }));
+
+    const titleBox = el('div', { style: 'text-align:left;' });
+    titleBox.appendChild(el('div', {
+      style: 'font-size:1.8rem;font-weight:bold;color:#4f46e5;line-height:1.1;letter-spacing:0.5px;',
+    }, 'КЛАСС РОБОТОТЕХНИКИ'));
+    header.appendChild(titleBox);
+
+    card.appendChild(header);
+
+    // === ЗАГОЛОВОК "QR ДЛЯ ПЕДСОВЕТА" ===
+    card.appendChild(el('div', {
+      style: `
+        font-size:1.6rem;
+        font-weight:bold;
+        color:#4f46e5;
+        margin-bottom:8px;
+        letter-spacing:2px;
+      `,
+    }, '📢 QR ДЛЯ ПЕДСОВЕТА'));
+
+    card.appendChild(el('div', {
+      style: 'font-size:1rem;color:#6b7280;margin-bottom:24px;',
+    }, 'Вход в журнал посещаемости'));
+
+    // === QR-КОД ===
+    const qrWrapper = el('div', {
+      style: `
+        background: #fff;
+        padding: 20px;
+        border-radius: 20px;
+        display: inline-block;
+        box-shadow: 0 4px 20px rgba(79,70,229,.15);
+        border: 3px solid #4f46e5;
+        margin-bottom: 24px;
+      `,
+    });
+
+    qrWrapper.appendChild(el('img', {
+      src: qrUrl,
+      alt: 'QR педсовета',
+      style: 'width:340px;height:340px;display:block;',
+    }));
+
+    card.appendChild(qrWrapper);
+
+    // === ИНСТРУКЦИЯ ===
+    card.appendChild(el('div', {
+      style: `
+        background: #eef2ff;
+        padding: 16px 24px;
+        border-radius: 16px;
+        font-size: 1rem;
+        color: #4338ca;
+        line-height: 1.6;
+        max-width: 480px;
+        margin: 0 auto 20px;
+      `,
+      html: `
+        <div style="font-weight:bold;margin-bottom:8px;font-size:1.05rem;">📱 Как войти</div>
+        1. ОТКРЫТЬ <b>КАМЕРУ</b> НА ТЕЛЕФОНЕ<br>
+        2. НАВЕСТИ НА <b>QR-КОД</b><br>
+        3. НАЖАТЬ НА ССЫЛКУ → <b>ОТКРЫВАЕТСЯ ЖУРНАЛ</b><br>
+        4. РАБОТАЕТ <b>БЕЗ ПАРОЛЯ</b>
+      `,
+    }));
+
+    
+    root.appendChild(card);
+
+    // === КНОПКИ УПРАВЛЕНИЯ (не печатаются) ===
+    const btnRow = el('div', {
+      style: 'display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;justify-content:center;',
+    });
+
+    btnRow.appendChild(el('button', {
+      style: 'background:#4f46e5;color:#fff;padding:12px 20px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
+      onclick: () => {
+        navigator.clipboard.writeText(councilUrl);
+        toast('📋 Ссылка скопирована!', 'ok');
+      },
+    }, '📋 Копировать ссылку'));
+
+    btnRow.appendChild(el('button', {
+      style: 'background:#22c55e;color:#fff;padding:12px 20px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
+      onclick: () => printCouncilQR(),
+    }, '🖨️ Распечатать'));
+
+    btnRow.appendChild(el('button', {
+      style: 'background:#f59e0b;color:#fff;padding:12px 20px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
+      onclick: () => window.open(councilUrl, '_blank'),
+    }, '👁️ Проверить вход'));
+
+        root.appendChild(btnRow);
+
+  } catch (e) {
+    console.error('Ошибка токена:', e);
+    root.innerHTML = `<p style="color:#ef4444;">Ошибка: ${e.message}</p>`;
+  }
+}
+
+// ============================================
+// 🖨️ ПЕЧАТЬ QR ДЛЯ ПЕДСОВЕТА (только карточка)
+// ============================================
+function printCouncilQR() {
+  const card = document.getElementById('council-print-card');
+  if (!card) {
+    toast('Карточка не найдена', 'err');
+    return;
+  }
+
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>QR для педсовета — КЛАСС РОБОТОТЕХНИКИ</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Segoe UI', Arial, sans-serif;
+          background: #fff;
+          padding: 20px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+        }
+        @media print {
+          body { padding: 0; }
+          @page { size: A4; margin: 10mm; }
+        }
+      </style>
+    </head>
+    <body>
+      ${card.outerHTML}
+    </body>
+    </html>
+  `);
+  win.document.close();
+
+  setTimeout(() => {
+    win.print();
+  }, 500);
+
+  toast('🖨️ Открываю печать...', 'ok');
+}
+
+// Создание токена педсовета
+async function createCouncilToken() {
+  try {
+    const token = 'pedsove-' + Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const { data, error } = await supabase
+      .from('council_tokens')
+      .insert({ token, label: 'Педсовет ' + new Date().getFullYear() })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast('✅ Токен создан!', 'ok');
+    renderCouncilToken();
+  } catch (e) {
+    toast('Ошибка: ' + e.message, 'err');
+  }
+}
+
+// ============================================
+// 🖨️ ПЕЧАТЬ РАСПИСАНИЯ (только карточка)
+// ============================================
+function printSchedule() {
+  const monday = new Date(currentWeekStart);
+  const days = [
+    { name: 'Пн', offset: 0 },
+    { name: 'Вт', offset: 1 },
+    { name: 'Ср', offset: 2 },
+    { name: 'Чт', offset: 3 },
+    { name: 'Пт', offset: 4 },
+  ];
+
+  const todayStr = formatLocalDate(new Date());
+
+  const friday = new Date(monday);
+  friday.setDate(friday.getDate() + 4);
+  const dateStr = `${monday.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} — ${friday.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+
+  const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+  const logoUrl = baseUrl + 'icons/logo.svg?v=210';
+
+  // Собираем таблицу
+  let tableHtml = `
+    <table style="width:100%; border-collapse:collapse; font-family:'Segoe UI', Arial, sans-serif; font-size:11px;">
+      <thead>
+        <tr>
+          <th style="background:#4f46e5; color:#fff; padding:10px; border:1px solid #3730a3; font-size:12px; width:100px;">Группа</th>
+  `;
+
+  days.forEach(day => {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + day.offset);
+    const dateStr = formatLocalDate(d);
+    const isToday = dateStr === todayStr;
+    const bg = isToday ? '#22c55e' : '#4f46e5';
+    const border = isToday ? '#16a34a' : '#3730a3';
+
+    tableHtml += `
+      <th style="background:${bg}; color:#fff; padding:10px; border:1px solid ${border}; font-size:12px; text-align:center;">
+        ${day.name} ${d.getDate()}
+      </th>
+    `;
+  });
+
+  tableHtml += `</tr></thead><tbody>`;
+
+  groupsCache.forEach((group, groupIdx) => {
+    const rowBg = groupIdx % 2 === 0 ? '#fff' : '#f9fafb';
+    tableHtml += `
+      <tr style="background:${rowBg};">
+        <td style="padding:10px; border:1px solid #d1d5db; font-weight:bold; font-size:11px; background:#f3f4f6;">
+          ${group.name}
+        </td>
+    `;
+
+    days.forEach(day => {
+      const d = new Date(monday);
+      d.setDate(d.getDate() + day.offset);
+      const dateStr = formatLocalDate(d);
+
+      const dayLessons = lessonsCache.filter(l =>
+        l.group_id === group.id && l.date === dateStr
+      );
+
+      tableHtml += `<td style="padding:8px; border:1px solid #d1d5db; vertical-align:top; min-height:60px;">`;
+
+      if (dayLessons.length) {
+        dayLessons.forEach(l => {
+          tableHtml += `
+            <div style="background:#eef2ff; border-left:3px solid #4f46e5; padding:6px 8px; border-radius:4px; margin-bottom:4px; font-size:10px; line-height:1.3;">
+              ${l.topic || '— без темы —'}
+            </div>
+          `;
+        });
+      }
+
+      tableHtml += `</td>`;
+    });
+
+    tableHtml += `</tr>`;
+  });
+
+  tableHtml += `</tbody></table>`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Расписание — КЛАСС РОБОТОТЕХНИКИ</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Segoe UI', Arial, sans-serif;
+          background: #fff;
+          padding: 20px;
+          color: #1f2937;
+        }
+        .schedule-header {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          padding-bottom: 20px;
+          border-bottom: 2px dashed #c7d2fe;
+          margin-bottom: 20px;
+        }
+        .schedule-header img {
+          width: 64px;
+          height: 64px;
+        }
+        .schedule-title {
+          text-align: left;
+        }
+        .schedule-title h1 {
+          font-size: 1.6rem;
+          color: #4f46e5;
+          font-weight: bold;
+          letter-spacing: 0.5px;
+          line-height: 1.1;
+        }
+        .schedule-title p {
+          font-size: 0.85rem;
+          color: #7c3aed;
+          margin-top: 4px;
+          letter-spacing: 1px;
+        }
+        .schedule-subtitle {
+          text-align: center;
+          font-size: 1.2rem;
+          color: #4f46e5;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        .schedule-period {
+          text-align: center;
+          font-size: 1rem;
+          color: #6b7280;
+          margin-bottom: 20px;
+        }
+        .schedule-footer {
+          text-align: center;
+          font-size: 0.8rem;
+          color: #9ca3af;
+          margin-top: 20px;
+          padding-top: 12px;
+          border-top: 1px dashed #c7d2fe;
+        }
+        @media print {
+          body { padding: 10mm; }
+          @page { size: A4 landscape; margin: 10mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="schedule-subtitle">📅 РАСПИСАНИЕ НА НЕДЕЛЮ</div>
+      <div class="schedule-period">${dateStr}</div>
+
+      ${tableHtml}
+
+      <div class="schedule-footer">
+        Распечатано: ${new Date().toLocaleDateString('ru-RU')} · КЛАСС РОБОТОТЕХНИКИ
+      </div>
+    </body>
+    </html>
+  `;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+
+  setTimeout(() => {
+    win.print();
+  }, 700);
+
+  toast('🖨️ Открываю печать расписания...', 'ok');
+}
+
 // Экспорт для отладки
 window.__app = {
   groupsCache,
@@ -3189,4 +4080,10 @@ window.__app = {
   renderSchedule,
   renderSettingsTab,
   renderCleanup,
+  renderCouncilAttendance,
+  renderCouncilToken,
+  createCouncilToken,
+  exportCouncilExcel,
+  exportCouncilPDF,
+  printSchedule,
 };

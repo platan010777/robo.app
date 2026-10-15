@@ -1,4 +1,4 @@
-const CACHE = 'robot-attendance-v19';  // ← v18 → v19 (заставит обновить)
+const CACHE = 'robot-attendance-v22';  
 
 const ASSETS = [
   './',

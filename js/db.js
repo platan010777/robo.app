@@ -436,16 +436,16 @@ export async function fetchMessages(roomType, roomId = null, limit = 100) {
   return (data || []).reverse();
 }
 
-// Учитель отправляет сообщение
-export async function sendTeacherMessage(roomType, roomId, text, teacherName) {
+// Учитель / Педсовет отправляет сообщение
+export async function sendTeacherMessage(roomType, roomId, text, authorName, authorType = 'teacher') {
   const { data, error } = await supabase
     .from('messages')
     .insert({
       room_type: roomType,
       room_id: roomId,
-      author_type: 'teacher',
+      author_type: authorType,
       author_id: null,
-      author_name: teacherName,
+      author_name: authorName,
       text: text,
     })
     .select()

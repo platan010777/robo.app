@@ -421,3 +421,40 @@ img[src*="logo"]:hover {
   transition: transform 0.3s ease;
   filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.7));
 }
+
+/* ============================================
+   РОЛЬ "ПЕДСОВЕТ" — СКРЫТИЕ ЛИШНИХ ВКЛАДОК
+   ============================================ */
+
+/* Вкладки учителя — скрыть для council */
+body[data-role="council"] .tabs button[data-tab="lessons"],
+body[data-role="council"] .tabs button[data-tab="reports"],
+body[data-role="council"] .tabs button[data-tab="settings"] {
+  display: none !important;
+}
+
+/* Вкладка педсовета — показать */
+body[data-role="council"] .tabs button[data-tab="attendance"] {
+  display: inline-block !important;
+}
+
+/* Кнопка «Распечатать расписание» — только для педсовета */
+.schedule-print-btn {
+  display: none !important;
+}
+
+body[data-role="council"] .schedule-print-btn {
+  display: inline-block !important;
+}
+
+/* Боковое меню — скрыть лишние пункты */
+body[data-role="council"] .side-menu-item[data-tab="lessons"],
+body[data-role="council"] .side-menu-item[data-tab="reports"],
+body[data-role="council"] .side-menu-item[data-tab="settings"] {
+  display: none !important;
+}
+
+/* Скрыть кнопки создания/редактирования в «Учениках» для council */
+body[data-role="council"] #subtab-students-list button {
+  display: none !important;
+}
