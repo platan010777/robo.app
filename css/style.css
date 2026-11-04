@@ -62,9 +62,9 @@ body {
 }
 
 main {
-  max-width: 900px;
+  max-width: 90%;     /* ← было 900px — стало 100% */
   margin: 0 auto;
-  padding: 16px;
+  padding: 16px 24px;  /* ← добавил отступы по бокам */
 }
 
 .tab { display: none; }
@@ -192,12 +192,22 @@ h2 { margin-bottom: 12px; color: var(--primary); }
 .side-menu-header {
   background: linear-gradient(135deg, #4f46e5, #9333ea);
   color: #fff;
-  padding: 20px 18px;
+  padding: 16px 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.side-menu-title {
+  font-size: 0.9rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .side-menu-logo {
@@ -277,10 +287,13 @@ h2 { margin-bottom: 12px; color: var(--primary); }
 /* ============================================
    МОБИЛЬНАЯ ВЕРСИЯ
    ============================================ */
+
 @media (max-width: 768px) {
   /* Показываем бургер */
   .burger-btn {
     display: flex;
+    flex-shrink: 0;          /* не сжимается */
+    margin-right: 8px;       /* отступ от лого */
   }
 
   /* Скрываем обычные вкладки */
@@ -290,16 +303,32 @@ h2 { margin-bottom: 12px; color: var(--primary); }
 
   /* Компактнее шапка */
   .topbar {
-    padding: 12px 16px;
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
+  /* Логотип — меньше */
+  .header-logo-container {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  /* Название — в одну строку, меньше */
   .topbar h1 {
-    font-size: 1rem;
+    font-size: 0.85rem;
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    min-width: 0;
   }
 
+  /* Имя пользователя — скрыть на мобилке */
   #user-info {
-    font-size: 0.8rem;
+    display: none;
   }
 
   /* Основной контент */
@@ -392,6 +421,29 @@ h2 { margin-bottom: 12px; color: var(--primary); }
    🌀 ЛОГОТИП: ЗАПУСК → ВРАЩЕНИЕ → ПАУЗА
    ============================================ */
 
+/* Все элементы с классом header-logo (SVG в шапке) */
+.header-logo {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  will-change: transform;
+  animation:
+    logo-start 1.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    logo-spin 8s linear 1.7s infinite;
+}
+
+.header-logo:hover {
+  animation-play-state: paused, paused;
+  transform: scale(1.15);
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.7));
+}
+
+.header-logo-container {
+  width: 65px;
+  height: 65px;
+}
+
 /* Фаза 1: Эффектный «запуск» (3 оборота с масштабом) */
 @keyframes logo-start {
   0%   { transform: rotate(0deg) scale(0.3); opacity: 0; }
@@ -457,4 +509,28 @@ body[data-role="council"] .side-menu-item[data-tab="settings"] {
 /* Скрыть кнопки создания/редактирования в «Учениках» для council */
 body[data-role="council"] #subtab-students-list button {
   display: none !important;
+}
+
+/* Скрываем бургер при открытом меню */
+body.menu-open .burger-btn {
+  display: none !important;
+}
+
+/* SVG в шапке бокового меню — компактный */
+.side-menu-svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  transform-origin: center center;
+  will-change: transform;
+  animation:
+    logo-start 1.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    logo-spin 8s linear 1.7s infinite;
+}
+
+.side-menu-svg:hover {
+  animation-play-state: paused, paused;
+  transform: scale(1.15);
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.7));
 }

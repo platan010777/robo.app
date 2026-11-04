@@ -1,4 +1,4 @@
-const CACHE = 'robot-attendance-v22';  
+const CACHE = 'robot-attendance-v24';  
 
 const ASSETS = [
   './',
@@ -18,31 +18,16 @@ const ASSETS = [
   './fonts/Roboto-Regular.ttf',
 ];
 
-// Установка — кэшируем файлы
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
-  );
-  self.skipWaiting();
-});
-
-// Активация — удаляем старые кэши
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
-      )
-    )
-  );
-  self.clients.claim();
-});
-
-// Fetch — сначала сеть для JS/CSS (чтобы правки подхватывались), потом кэш
+// Fetch — сначала сеть для JS/CSS, потом кэш
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Для HTML/JS/CSS — сначала СЕТЬ, потом кэш (чтобы изменения сразу виделись)
+  // ⚡ ПРОПУСКАЕМ запросы к Supabase — SW не должен их трогать!
+  if (url.hostname.includes('supabase.co')) {
+    return;  // ← пусть браузер сам справится
+  }
+
+  // Для HTML/JS/CSS — сначала СЕТЬ, потом кэш
   if (
     e.request.destination === 'script' ||
     e.request.destination === 'style' ||
@@ -51,12 +36,11 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(e.request)
         .then(response => {
-          // Обновляем кэш свежей версией
           const clone = response.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
           return response;
         })
-        .catch(() => caches.match(e.request))  // если сеть недоступна — из кэша
+        .catch(() => caches.match(e.request))
     );
     return;
   }

@@ -19,16 +19,13 @@ if (councilToken) {
       document.body.dataset.role = 'council';
       console.log('✅ Режим ПЕДСОВЕТА активирован:', data[0].label);
 
-      // Прячем модалку авторизации
       document.getElementById('auth-screen')?.classList.remove('show');
 
-      // Показываем в topbar имя
       const userInfoEl = document.getElementById('user-info');
       if (userInfoEl) {
         userInfoEl.innerHTML = `<span>👥 ${data[0].label}</span>`;
       }
 
-      // Загружаем данные и открываем вкладку посещаемости
       setTimeout(async () => {
         await loadAll();
         switchTab('attendance');
@@ -42,7 +39,7 @@ if (councilToken) {
 }
 
 // ============================================
-// НАВИГАЦИЯ ПО ВКЛАДКАМ (вкладки + меню)
+// НАВИГАЦИЯ ПО ВКЛАДКАМ
 // ============================================
 function switchTab(tabName) {
   document.querySelectorAll('.tabs button, .side-menu-item').forEach(b => {
@@ -76,8 +73,6 @@ document.querySelectorAll('.side-menu-item').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-// При загрузке — активируем вкладку, которая уже помечена как active в HTML
-// Используем setTimeout вместо DOMContentLoaded, т.к. модуль загружается ПОСЛЕ этого события
 setTimeout(() => {
   const activeTab = document.querySelector('.tab.active');
   if (activeTab) {
@@ -97,6 +92,7 @@ function openMenu() {
   sideMenu.classList.add('open');
   menuOverlay.classList.add('show');
   burgerBtn.classList.add('open');
+  document.body.classList.add('menu-open');
   document.body.style.overflow = 'hidden';
 }
 
@@ -104,6 +100,7 @@ function closeMenu() {
   sideMenu.classList.remove('open');
   menuOverlay.classList.remove('show');
   burgerBtn.classList.remove('open');
+  document.body.classList.remove('menu-open');
   document.body.style.overflow = '';
 }
 
@@ -239,7 +236,6 @@ async function renderStudents() {
     onclick: () => openStudentForm(),
   }, '➕ Добавить ученика');
   root.appendChild(addBtn);
-  
 
   if (!studentsCache.length) {
     root.appendChild(el('p', {}, 'Пока нет учеников. Добавь первого! 👆'));
@@ -266,7 +262,7 @@ async function renderStudents() {
     card.appendChild(info);
 
     const actions = el('div', { style: 'display:flex;gap:6px;' });
-    
+
     actions.appendChild(el('button', {
       style: 'background:#ec4899;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
       title: 'Добавить бонус',
@@ -277,8 +273,8 @@ async function renderStudents() {
       style: 'background:#3b82f6;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
       title: 'История бонусов',
       onclick: () => openBonusHistory(s),
-    }, '📋'));    
-    
+    }, '📋'));
+
     actions.appendChild(el('button', {
       style: 'background:#f59e0b;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
       onclick: () => openStudentForm(s),
@@ -408,7 +404,7 @@ async function renderLessons() {
 
     const actions = el('div', { style: 'display:flex;gap:6px;' });
     actions.appendChild(el('button', {
-      style: 'background:#f59e0b;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
+      style: 'background:#22c55e;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
       onclick: () => openLessonForm(l),
     }, '✏️'));
     actions.appendChild(el('button', {
@@ -495,7 +491,7 @@ function openLessonForm(lesson = null) {
 }
 
 // ============================================
-// СТАТИСТИКА ФАЙЛОВ (для очистки)
+// СТАТИСТИКА ФАЙЛОВ
 // ============================================
 async function loadFilesStats() {
   const statsBox = document.getElementById('files-stats-box');
@@ -561,7 +557,7 @@ async function renderGroups() {
 
     const actions = el('div', { style: 'display:flex;gap:6px;' });
     actions.appendChild(el('button', {
-      style: 'background:#f59e0b;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
+      style: 'background:#22c55e;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;',
       onclick: () => openGroupForm(g),
     }, '✏️'));
     actions.appendChild(el('button', {
@@ -743,7 +739,6 @@ async function loadAttendance(lessonId) {
   }, '✅ Все присутствуют');
   listBox.appendChild(markAllBtn);
 
-  // --- Блок заявок от учеников ---
   try {
     const requests = await db.fetchRequestsForLesson(lessonId);
     if (requests.length) {
@@ -839,7 +834,6 @@ async function loadAttendance(lessonId) {
     console.error('Ошибка загрузки заявок:', e);
   }
 
-  // --- Список учеников ---
   const list = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
   students.forEach(s => {
     list.appendChild(renderStudentAttendanceCard(lessonId, s));
@@ -960,7 +954,7 @@ function updateJournalSummary(lessonId, students) {
 async function renderReports() {
   const root = document.getElementById('tab-reports');
   if (!root) {
-    console.error('❌ Не найден #tab-reports в index.html'); //ПРОВЕРКА НАЛИЧИЯ РАЗДЕЛА
+    console.error('❌ Не найден #tab-reports в index.html');
     return;
   }
   root.innerHTML = '';
@@ -1254,7 +1248,7 @@ async function downloadQRFromUrl(qrUrl, groupName) {
 }
 
 // ============================================
-// ПРОПУСКА УЧЕНИКОВ (персональные QR)
+// ПРОПУСКА УЧЕНИКОВ
 // ============================================
 async function renderPasses() {
   const root = document.getElementById('subtab-settings-passes');
@@ -1959,11 +1953,16 @@ async function openTeacherRoom(roomKey) {
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   };
 
-  await db.markRoomReadTeacher(room.key);
-  room.unread = 0;
+  const isCouncil = document.body.dataset.role === 'council';
 
-  const roomItem = Object.values(chatRooms).find(r => r.key === room.key);
-  if (roomItem) roomItem.unread = 0;
+  if (!isCouncil) {
+    await db.markRoomReadTeacher(room.key);
+    room.unread = 0;
+    const roomItem = Object.values(chatRooms).find(r => r.key === room.key);
+    if (roomItem) roomItem.unread = 0;
+
+    await updateChatsBadge();
+  }
 }
 
 async function loadTeacherMessages(room) {
@@ -2091,6 +2090,8 @@ async function sendTeacherMsg() {
     await db.sendTeacherMessage(room.type, room.id, text, authorName, authorType);
     input.value = '';
     input.style.height = 'auto';
+
+    await updateChatsBadge();
   } catch (e) {
     alert('Ошибка отправки: ' + e.message);
   } finally {
@@ -2114,6 +2115,10 @@ function setupTeacherRealtime(room) {
     if (!box) return;
 
     loadTeacherMessages(room);
+
+    if (newMsg.author_type !== 'teacher' && newMsg.author_type !== 'council') {
+      updateChatsBadge();
+    }
   });
 }
 
@@ -2213,24 +2218,20 @@ async function makeHomeworkCard(hw) {
     .select('*')
     .eq('homework_id', hw.id);
 
-    // Файлы, прикреплённые учителем
   const { data: teacherFiles } = await supabase
     .from('homework_files')
     .select('*')
     .eq('homework_id', hw.id)
     .eq('is_teacher_file', true);
 
-    const subMap = {};
+  const subMap = {};
   (submissions || []).forEach(s => subMap[s.student_id] = s);
 
-  // Все активные ученики группы
   const allStudents = studentsCache.filter(s => s.is_active);
 
-  // Разделяем: кто сдал и кто нет
   const submittedStudents = allStudents.filter(s => subMap[s.id]);
   const notSubmittedCount = allStudents.length - submittedStudents.length;
 
-  // Обновляем заголовок блока
   submissionsBox.innerHTML = '';
   submissionsBox.appendChild(el('div', {
     style: 'font-weight:bold;color:#4f46e5;font-size:0.95rem;margin-bottom:10px;',
@@ -2243,7 +2244,6 @@ async function makeHomeworkCard(hw) {
       style: 'color:#9ca3af;font-size:0.9rem;text-align:center;padding:12px;',
     }, '😕 Пока никто не сдал'));
   } else {
-    // Сортируем: сначала проверенные, потом ждущие
     submittedStudents.sort((a, b) => {
       const sa = subMap[a.id], sb = subMap[b.id];
       if (sa.is_approved && !sb.is_approved) return -1;
@@ -2259,7 +2259,6 @@ async function makeHomeworkCard(hw) {
 
   card.appendChild(submissionsBox);
 
-    // Блок материалов от учителя
   if (teacherFiles && teacherFiles.length) {
     const tFilesBox = el('div', {
       style: 'background:#eef2ff;border-radius:10px;padding:12px;margin-top:12px;',
@@ -2342,7 +2341,6 @@ async function makeStudentSubmissionRow(hw, student, submission) {
     }, '— не сдал'));
   }
 
-  // Загружаем файлы ученика (только если есть сдача)
   if (submission) {
     try {
       const { data: files } = await supabase
@@ -2496,7 +2494,6 @@ function openHomeworkForm() {
     style: 'padding:10px;border-radius:8px;border:2px solid #e5e7eb;font-size:1rem;',
   });
 
-  // Блок прикрепления файлов
   const filesBox = el('div', {
     style: 'background:#f9fafb;border-radius:10px;padding:12px;',
   });
@@ -2573,7 +2570,6 @@ function openHomeworkForm() {
   openModal('📚 Новая домашка', form, async () => {
     if (!titleInput.value.trim()) throw new Error('Введи название');
 
-    // 1. Создаём домашку
     const { data: newHw, error } = await supabase
       .from('homework')
       .insert({
@@ -2586,7 +2582,6 @@ function openHomeworkForm() {
 
     if (error) throw error;
 
-    // 2. Загружаем файлы (если выбраны)
     if (selectedFiles.length) {
       for (const file of selectedFiles) {
         await db.uploadTeacherHomeworkFile(file, newHw.id);
@@ -2627,7 +2622,6 @@ async function renderSchedule() {
     currentWeekStart = getMondayOfWeek(new Date());
   }
 
-  // Заголовок
   const header = el('div', {
     style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;',
   });
@@ -2657,14 +2651,12 @@ async function renderSchedule() {
     },
   }, 'Следующая →'));
 
-    // 🖨️ Кнопка печати (только для педсовета — CSS скроет у учителя)
   const printBtn = el('button', {
     style: 'background:#22c55e;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
     onclick: () => printSchedule(),
   }, '🖨️ Распечатать');
   printBtn.className = 'schedule-print-btn';
   header.appendChild(printBtn);
-
 
   const mondayThisWeek = getMondayOfWeek(new Date());
   if (currentWeekStart.getTime() !== mondayThisWeek.getTime()) {
@@ -2681,7 +2673,6 @@ async function renderSchedule() {
 
   const allLessons = await db.fetchLessons();
 
-  // ЖЁСТКО: 5 дней, offset ОТ 0
   const days = [
     { name: 'Пн', offset: 0 },
     { name: 'Вт', offset: 1 },
@@ -2696,9 +2687,10 @@ async function renderSchedule() {
     style: 'overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
   });
 
-  // Шапка
+  const isMobile = window.innerWidth <= 768;
+
   const headerRow = el('div', {
-    style: 'display:grid;grid-template-columns:120px repeat(5, 1fr);gap:1px;background:#e5e7eb;min-width:800px;',
+    style: `display:grid;grid-template-columns:${isMobile ? '80px' : '140px'} repeat(5, minmax(0, 1fr));gap:1px;background:#e5e7eb;${isMobile ? '' : 'min-width:800px;'}`,
   });
 
   headerRow.appendChild(el('div', {
@@ -2718,14 +2710,14 @@ async function renderSchedule() {
 
   table.appendChild(headerRow);
 
-  // Строки по группам
   groupsCache.forEach(group => {
     const row = el('div', {
-      style: 'display:grid;grid-template-columns:120px repeat(5, 1fr);gap:1px;background:#e5e7eb;min-width:800px;',
-    });
-
+    style: `display:grid;grid-template-columns:${isMobile ? '80px' : '140px'} repeat(5, minmax(0, 1fr));gap:1px;background:#e5e7eb;${isMobile ? '' : 'min-width:800px;'}`,
+  });
+  
     row.appendChild(el('div', {
-      style: 'padding:12px;background:#f9fafb;font-weight:bold;font-size:0.9rem;',
+      style: `padding:${isMobile ? '6px 4px' : '10px 8px'};background:#f9fafb;font-weight:bold;font-size:${isMobile ? '0.65rem' : '0.8rem'};word-break:break-word;line-height:1.25;`,
+      title: group.name,
     }, group.name));
 
     days.forEach(day => {
@@ -2738,13 +2730,13 @@ async function renderSchedule() {
       );
 
       const cell = el('div', {
-        style: 'padding:8px;background:#fff;min-height:60px;font-size:0.85rem;',
+        style: `padding:${isMobile ? '4px' : '6px'};background:#fff;min-height:${isMobile ? '40px' : '60px'};font-size:${isMobile ? '0.65rem' : '0.75rem'};line-height:1.3;`,
       });
 
       if (dayLessons.length) {
         dayLessons.forEach(l => {
           cell.appendChild(el('div', {
-            style: 'background:#eef2ff;border-left:3px solid #4f46e5;padding:6px 8px;border-radius:6px;margin-bottom:4px;',
+            style: `background:#eef2ff;border-left:${isMobile ? '2px' : '3px'} solid #4f46e5;padding:${isMobile ? '3px 4px' : '4px 6px'};border-radius:6px;margin-bottom:4px;font-size:${isMobile ? '0.6rem' : '0.72rem'};line-height:1.25;word-break:break-word;`,
           }, l.topic || '— без темы —'));
         });
       }
@@ -2757,7 +2749,6 @@ async function renderSchedule() {
 
   root.appendChild(table);
 
-  // Отладка
   console.log('📅 currentWeekStart:', formatLocalDate(currentWeekStart));
   console.log('📅 Дни недели:', days.map(d => {
     const dd = new Date(currentWeekStart);
@@ -2768,7 +2759,7 @@ async function renderSchedule() {
 }
 
 // ============================================
-// БОНУСЫ — UI учителя
+// БОНУСЫ
 // ============================================
 function openBonusForm(student) {
   const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
@@ -2824,11 +2815,7 @@ function openBonusForm(student) {
   });
 }
 
-// ============================================
-// ПРОСМОТР И УДАЛЕНИЕ БОНУСОВ
-// ============================================
 async function openBonusHistory(student) {
-  // Загружаем бонусы
   let bonuses = [];
   try {
     bonuses = await db.fetchBonusesForStudent(student.id);
@@ -2839,12 +2826,10 @@ async function openBonusHistory(student) {
 
   const form = el('div', { style: 'display:flex;flex-direction:column;gap:10px;' });
 
-  // Заголовок
   form.appendChild(el('div', {
     style: 'font-weight:bold;color:#4f46e5;font-size:1.05rem;',
   }, `🎁 Бонусы — ${student.full_name}`));
 
-  // Считаем сумму
   const total = bonuses.reduce((sum, b) => sum + b.points, 0);
   form.appendChild(el('div', {
     style: `background:${total >= 0 ? '#dcfce7' : '#fee2e2'};
@@ -2853,7 +2838,6 @@ async function openBonusHistory(student) {
             text-align:center;font-size:1rem;`,
   }, `Итого: ${total > 0 ? '+' : ''}${total} баллов`));
 
-  // Список бонусов
   if (!bonuses.length) {
     form.appendChild(el('p', {
       style: 'text-align:center;color:#9ca3af;padding:20px;',
@@ -2879,13 +2863,11 @@ async function openBonusHistory(student) {
       }, `${b.teacher_name || 'Учитель'} · ${new Date(b.created_at).toLocaleString('ru-RU')}`));
       row.appendChild(info);
 
-      // Баллы
       row.appendChild(el('div', {
         style: `font-weight:bold;font-size:1.1rem;
                 color:${b.points > 0 ? '#22c55e' : '#ef4444'};`,
       }, `${b.points > 0 ? '+' : ''}${b.points}`));
 
-      // Кнопка удаления
       row.appendChild(el('button', {
         style: 'background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem;',
         title: 'Удалить бонус',
@@ -2894,9 +2876,7 @@ async function openBonusHistory(student) {
           try {
             await db.deleteBonus(b.id);
             toast('🗑️ Бонус удалён', 'ok');
-            // Закрываем текущее модальное окно
             document.querySelectorAll('.modal.show').forEach(m => m.remove());
-            // Открываем заново с обновлённым списком
             openBonusHistory(student);
           } catch (e) {
             toast('Ошибка: ' + e.message, 'err');
@@ -2910,16 +2890,13 @@ async function openBonusHistory(student) {
     form.appendChild(list);
   }
 
-  openModal('🎁 Бонусы ученика', form, async () => {
-    // Закрытие — ничего не делаем
-  });
+  openModal('🎁 Бонусы ученика', form, async () => {});
 }
 
 // ============================================
-// ВКЛАДКА "УЧЕНИКИ" С ПОДВКЛАДКАМИ
+// ПОДВКЛАДКИ «УЧЕНИКИ»
 // ============================================
 async function renderStudentsTab() {
-  // Инициализация подвкладок (только один раз)
   if (!document.getElementById('subtabs-students-init')) {
     const marker = document.createElement('div');
     marker.id = 'subtabs-students-init';
@@ -2933,22 +2910,19 @@ async function renderStudentsTab() {
       });
     });
   }
-  
-  // По умолчанию — "Список"
+
   const currentSubtab = document.querySelector('.subtab-btn.active')?.dataset.subtab || 'students-list';
-  
+
   if (currentSubtab === 'students-list') {
     await renderStudents();
   } else {
     await renderRequests();
   }
-  
-  // Обновляем бейдж заявок
+
   await updateRequestsBadge();
 }
 
 function switchSubtab(subtabName) {
-  // Только внутри секции «Ученики»
   document.querySelectorAll('#tab-students .subtab-btn').forEach(b => {
     if (b.dataset.subtab === subtabName) b.classList.add('active');
     else b.classList.remove('active');
@@ -2967,9 +2941,9 @@ async function updateRequestsBadge() {
     const requests = await db.fetchAllRequests();
     const pendingCount = requests.filter(r => !r.is_approved).length;
     const badge = document.getElementById('subtab-requests-badge');
-    
+
     if (!badge) return;
-    
+
     if (pendingCount > 0) {
       badge.textContent = pendingCount;
       badge.style.display = 'inline-block';
@@ -2982,10 +2956,9 @@ async function updateRequestsBadge() {
 }
 
 // ============================================
-// ВКЛАДКА "ЗАНЯТИЯ" С ПОДВКЛАДКАМИ
+// ПОДВКЛАДКИ «ЗАНЯТИЯ»
 // ============================================
 async function renderLessonsTab() {
-  // Инициализация подвкладок (только один раз)
   if (!document.getElementById('subtabs-lessons-init')) {
     const marker = document.createElement('div');
     marker.id = 'subtabs-lessons-init';
@@ -3000,7 +2973,6 @@ async function renderLessonsTab() {
     });
   }
 
-  // На входе — всегда показываем список (никакая подвкладка не активна)
   document.querySelectorAll('#tab-lessons .subtab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#tab-lessons .subtab-content').forEach(c => c.classList.remove('active'));
 
@@ -3015,7 +2987,6 @@ function switchLessonsSubtab(subtabName) {
     .querySelector(`#tab-lessons .subtab-btn[data-subtab="${subtabName}"]`)
     ?.classList.contains('active');
 
-  // Если кликнули на уже активную — возвращаемся к списку
   if (isCurrentlyActive) {
     document.querySelectorAll('#tab-lessons .subtab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('#tab-lessons .subtab-content').forEach(c => c.classList.remove('active'));
@@ -3024,7 +2995,6 @@ function switchLessonsSubtab(subtabName) {
     return;
   }
 
-  // Иначе — переключаемся на выбранную
   document.querySelectorAll('#tab-lessons .subtab-btn').forEach(b => {
     if (b.dataset.subtab === subtabName) b.classList.add('active');
     else b.classList.remove('active');
@@ -3039,16 +3009,15 @@ function switchLessonsSubtab(subtabName) {
 }
 
 // ============================================
-// ВКЛАДКА "СВЯЗЬ" С ПОДВКЛАДКАМИ
+// ПОДВКЛАДКИ «СВЯЗЬ»
 // ============================================
 async function renderCommunicationTab() {
-  // Инициализация подвкладок (только один раз)
   if (!document.getElementById('subtabs-comm-init')) {
     const marker = document.createElement('div');
     marker.id = 'subtabs-comm-init';
     marker.style.display = 'none';
     document.body.appendChild(marker);
-    
+
     const section = document.getElementById('tab-communication');
     section.querySelectorAll('.subtab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3056,18 +3025,16 @@ async function renderCommunicationTab() {
       });
     });
   }
-  
-  // По умолчанию — "Объявления"
+
   const activeBtn = document.querySelector('#tab-communication .subtab-btn.active');
   const currentSubtab = activeBtn?.dataset.subtab || 'comm-announcements';
-  
+
   if (currentSubtab === 'comm-announcements') {
     await renderAnnouncements();
   } else if (currentSubtab === 'comm-chats') {
     await renderChats();
   }
-  
-  // Обновляем бейдж непрочитанных чатов
+
   await updateChatsBadge();
 }
 
@@ -3076,46 +3043,80 @@ function switchCommunicationSubtab(subtabName) {
     if (b.dataset.subtab === subtabName) b.classList.add('active');
     else b.classList.remove('active');
   });
-  
+
   document.querySelectorAll('#tab-communication .subtab-content').forEach(c => c.classList.remove('active'));
   const target = document.getElementById('subtab-' + subtabName);
   if (target) target.classList.add('active');
-  
+
   if (subtabName === 'comm-announcements') renderAnnouncements();
   if (subtabName === 'comm-chats') renderChats();
+
+  updateChatsBadge();
 }
 
 async function updateChatsBadge() {
+  const badge = document.getElementById('subtab-chats-badge');
+  if (!badge) return;
+
   try {
-    // Считаем все непрочитанные
+    const isCouncil = document.body.dataset.role === 'council';
+
+    if (isCouncil) {
+      let total = 0;
+
+      const { count: globalCount } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('room_type', 'global')
+        .eq('is_deleted', false);
+
+      total += globalCount || 0;
+
+      for (const g of groupsCache) {
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('room_type', 'group')
+          .eq('room_id', g.id)
+          .eq('is_deleted', false);
+
+        total += count || 0;
+      }
+
+      if (total > 0) {
+        badge.textContent = total > 99 ? '99+' : total;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+      return;
+    }
+
     const rooms = {};
     rooms['global'] = await db.getTeacherUnreadCount('global');
-    
+
     for (const g of groupsCache) {
       rooms['group:' + g.id] = await db.getTeacherUnreadCount('group:' + g.id);
     }
-    
+
     const total = Object.values(rooms).reduce((sum, n) => sum + n, 0);
-    const badge = document.getElementById('subtab-chats-badge');
-    
-    if (!badge) return;
-    
+
     if (total > 0) {
       badge.textContent = total > 99 ? '99+' : total;
       badge.style.display = 'inline-block';
     } else {
       badge.style.display = 'none';
     }
+
   } catch (e) {
     console.error('Ошибка бейджа чатов:', e);
   }
 }
 
 // ============================================
-// ВКЛАДКА "НАСТРОЙКИ" С ПОДВКЛАДКАМИ
+// ПОДВКЛАДКИ «НАСТРОЙКИ»
 // ============================================
 async function renderSettingsTab() {
-  // Инициализация подвкладок (только один раз)
   if (!document.getElementById('subtabs-settings-init')) {
     const marker = document.createElement('div');
     marker.id = 'subtabs-settings-init';
@@ -3130,7 +3131,6 @@ async function renderSettingsTab() {
     });
   }
 
-  // На входе — всегда показываем группы (никакая подвкладка не активна)
   document.querySelectorAll('#tab-settings .subtab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('#tab-settings .subtab-content').forEach(c => c.classList.remove('active'));
 
@@ -3154,7 +3154,6 @@ function switchSettingsSubtab(subtabName) {
     .querySelector(`#tab-settings .subtab-btn[data-subtab="${subtabName}"]`)
     ?.classList.contains('active');
 
-  // Если кликнули на уже активную — возвращаемся к группам
   if (isCurrentlyActive) {
     document.querySelectorAll('#tab-settings .subtab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('#tab-settings .subtab-content').forEach(c => c.classList.remove('active'));
@@ -3163,7 +3162,6 @@ function switchSettingsSubtab(subtabName) {
     return;
   }
 
-  // Иначе — переключаемся на выбранную
   document.querySelectorAll('#tab-settings .subtab-btn').forEach(b => {
     if (b.dataset.subtab === subtabName) b.classList.add('active');
     else b.classList.remove('active');
@@ -3180,7 +3178,7 @@ function switchSettingsSubtab(subtabName) {
 }
 
 // ============================================
-// ОЧИСТКА БД (отдельная подвкладка)
+// ОЧИСТКА БД
 // ============================================
 async function renderCleanup() {
   const root = document.getElementById('subtab-settings-cleanup');
@@ -3252,7 +3250,7 @@ async function renderCleanup() {
 }
 
 // ============================================
-// 📊 ВКЛАДКА "ПОСЕЩАЕМОСТЬ" (для педсовета)
+// 📊 ВКЛАДКА "ПОСЕЩАЕМОСТЬ" (для педсовета) — 2 ТАБЛИЦЫ!
 // ============================================
 async function renderCouncilAttendance() {
   const root = document.getElementById('council-attendance-content');
@@ -3270,7 +3268,9 @@ async function renderCouncilAttendance() {
 
     root.innerHTML = '';
 
-    // Фильтры периода
+    // ============================================
+    // ФИЛЬТРЫ ПЕРИОДА
+    // ============================================
     const filterBox = el('div', {
       style: 'background:#fff;padding:16px;border-radius:12px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
     });
@@ -3288,36 +3288,98 @@ async function renderCouncilAttendance() {
     periods.forEach(p => {
       periodBtns.appendChild(el('button', {
         style: 'background:#eef2ff;color:#4f46e5;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:0.9rem;font-weight:bold;',
-        onclick: () => loadPeriodStats(p.key),
+        onclick: (e) => {
+          periodBtns.querySelectorAll('button').forEach(b => {
+            b.style.background = '#eef2ff';
+            b.style.color = '#4f46e5';
+          });
+          e.target.style.background = '#4f46e5';
+          e.target.style.color = '#fff';
+
+          loadPeriodStats(p.key);
+        },
       }, p.label));
     });
     filterBox.appendChild(periodBtns);
     root.appendChild(filterBox);
 
-    // Таблица рейтинга
-    const tableBox = el('div', {
-      style: 'background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px;',
+    // ============================================
+    // ДВЕ ТАБЛИЦЫ (ДЕСКТОП) / СТОЛБИКОМ (МОБИЛКА)
+    // ============================================
+    const isMobile = window.innerWidth <= 1400;
+
+    const tablesWrapper = el('div', {
+      style: isMobile
+        ? 'display:flex;flex-direction:column;gap:16px;'
+        : 'display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;',
     });
-    tableBox.appendChild(el('h3', {
+
+    // ЛЕВАЯ: Рейтинг за всё время
+    const leftBox = el('div', {
+      style: 'background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
+    });
+    leftBox.appendChild(el('h3', {
       style: 'color:#4f46e5;margin-bottom:12px;font-size:1.1rem;',
     }, '🏆 Рейтинг учеников (всего)'));
 
-    tableBox.appendChild(makeCouncilRatingTable(rating));
-    root.appendChild(tableBox);
+    leftBox.appendChild(makeCouncilRatingTable(rating, true));
 
-    // Кнопки экспорта
-    const exportBox = el('div', {
-      style: 'display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;',
+    const leftExport = el('div', {
+      style: 'display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;',
     });
-    exportBox.appendChild(el('button', {
-      style: 'background:#16a34a;color:#fff;padding:12px 20px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;flex:1;',
+    leftExport.appendChild(el('button', {
+      style: 'background:#16a34a;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;flex:1;',
       onclick: () => exportCouncilExcel(rating),
-    }, '📥 Скачать Excel'));
-    exportBox.appendChild(el('button', {
-      style: 'background:#dc2626;color:#fff;padding:12px 20px;border:none;border-radius:12px;cursor:pointer;font-size:1rem;flex:1;',
+    }, '📥 Excel'));
+    leftExport.appendChild(el('button', {
+      style: 'background:#dc2626;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;flex:1;',
       onclick: () => exportCouncilPDF(rating),
-    }, '📥 Скачать PDF'));
-    root.appendChild(exportBox);
+    }, '📥 PDF'));
+    leftBox.appendChild(leftExport);
+
+    // ПРАВАЯ: Период (загружается по клику)
+    const rightBox = el('div', {
+      id: 'period-table-box',
+      style: 'background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
+    });
+    rightBox.appendChild(el('h3', {
+      style: 'color:#4f46e5;margin-bottom:12px;font-size:1.1rem;',
+    }, '📊 За период (выберите)'));
+
+    rightBox.appendChild(el('p', {
+      style: 'color:#9ca3af;text-align:center;padding:20px;',
+    }, '👆 Выберите период выше'));
+
+    // ============================================
+    // ПОРЯДОК: ДЕСКТОП — [Всего] [Период]
+    //           МОБИЛКА — [Период] [Всего]
+    // ============================================
+    if (isMobile) {
+      tablesWrapper.appendChild(rightBox);
+      tablesWrapper.appendChild(leftBox);
+    } else {
+      tablesWrapper.appendChild(leftBox);
+      tablesWrapper.appendChild(rightBox);
+    }
+
+    root.appendChild(tablesWrapper);
+
+    // ============================================
+    // АВТО-ЗАГРУЗКА ПЕРИОДА (по умолчанию — месяц)
+    // ============================================
+    setTimeout(() => {
+      const monthBtn = periodBtns.querySelectorAll('button')[1];
+      if (monthBtn) {
+        periodBtns.querySelectorAll('button').forEach(b => {
+          b.style.background = '#eef2ff';
+          b.style.color = '#4f46e5';
+        });
+        monthBtn.style.background = '#4f46e5';
+        monthBtn.style.color = '#fff';
+      }
+
+      loadPeriodStats('month');
+    }, 100);
 
   } catch (e) {
     console.error('Ошибка посещаемости:', e);
@@ -3325,7 +3387,7 @@ async function renderCouncilAttendance() {
   }
 }
 
-// Загрузка статистики за период
+// Загрузка статистики за период — ПИШЕТ В ПРАВУЮ ТАБЛИЦУ
 async function loadPeriodStats(period) {
   const today = new Date();
   let dateFrom, dateTo;
@@ -3348,9 +3410,13 @@ async function loadPeriodStats(period) {
   const fromStr = formatLocalDate(dateFrom);
   const toStr = formatLocalDate(dateTo);
 
-  const root = document.getElementById('council-attendance-content');
-  const oldPeriodBox = root.querySelector('.period-stats');
-  if (oldPeriodBox) oldPeriodBox.remove();
+  const rightBox = document.getElementById('period-table-box');
+  if (!rightBox) return;
+
+  rightBox.innerHTML = '';
+  rightBox.appendChild(el('h3', {
+    style: 'color:#4f46e5;margin-bottom:12px;font-size:1.1rem;',
+  }, `📊 За период: ${fromStr} → ${toStr}`));
 
   try {
     const { data, error } = await supabase.rpc('get_council_attendance', {
@@ -3359,21 +3425,25 @@ async function loadPeriodStats(period) {
     });
     if (error) throw error;
 
-    const periodBox = el('div', {
-      style: 'background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px;',
-    });
-    periodBox.className = 'period-stats';
-    periodBox.appendChild(el('h3', {
-      style: 'color:#4f46e5;margin-bottom:12px;font-size:1.1rem;',
-    }, `📊 За период: ${fromStr} → ${toStr}`));
-
     if (!data || !data.length) {
-      periodBox.appendChild(el('p', { style: 'color:#9ca3af;' }, '😕 Нет данных за период'));
-    } else {
-      periodBox.appendChild(makeCouncilRatingTable(data));
+      rightBox.appendChild(el('p', { style: 'color:#9ca3af;text-align:center;padding:20px;' }, '😕 Нет данных за период'));
+      return;
     }
 
-    root.appendChild(periodBox);
+    rightBox.appendChild(makeCouncilRatingTable(data, true));
+
+    const rightExport = el('div', {
+      style: 'display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;',
+    });
+    rightExport.appendChild(el('button', {
+      style: 'background:#16a34a;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;flex:1;',
+      onclick: () => exportCouncilExcel(data),
+    }, '📥 Excel'));
+    rightExport.appendChild(el('button', {
+      style: 'background:#dc2626;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.9rem;flex:1;',
+      onclick: () => exportCouncilPDF(data),
+    }, '📥 PDF'));
+    rightBox.appendChild(rightExport);
 
   } catch (e) {
     console.error('Ошибка периода:', e);
@@ -3381,32 +3451,66 @@ async function loadPeriodStats(period) {
   }
 }
 
-// Таблица рейтинга (для педсовета)
-function makeCouncilRatingTable(data) {
+// ============================================
+// ТАБЛИЦА РЕЙТИНГА (АДАПТИВНАЯ)
+// ============================================
+function makeCouncilRatingTable(data, compact = false) {
   const table = el('div', { style: 'overflow-x:auto;' });
 
+  const isMobile = window.innerWidth <= 768;
+
+  const gridCols = isMobile
+    ? '30px 1fr 40px 50px 50px'
+    : (compact
+        ? '30px 1fr 100px 40px 50px 50px'
+        : '40px 1fr 140px 60px 80px 60px');
+
   const header = el('div', {
-    style: 'display:grid;grid-template-columns:40px 1fr 80px 60px 80px 60px;gap:8px;padding:10px;background:#eef2ff;border-radius:10px;font-weight:bold;font-size:0.85rem;color:#4f46e5;',
+    style: `display:grid;grid-template-columns:${gridCols};gap:${compact ? '4px' : '8px'};padding:${compact ? '8px' : '10px'};background:#eef2ff;border-radius:10px;font-weight:bold;font-size:${compact ? '0.75rem' : '0.85rem'};color:#4f46e5;`,
   });
-  ['#', 'Ученик', '🏫 Группа', '✅ Был', '📊 %', '🏆 Балл'].forEach(h => {
+
+  const headers = isMobile
+    ? ['#', 'Ученик', '✅', '%', '🏆']
+    : ['#', 'Ученик', '🏫 Группа', '✅ Был', '📊 %', '🏆 Балл'];
+
+  headers.forEach(h => {
     header.appendChild(el('div', { style: 'text-align:center;' }, h));
   });
   table.appendChild(header);
 
   data.forEach((s, idx) => {
     const row = el('div', {
-      style: `display:grid;grid-template-columns:40px 1fr 80px 60px 80px 60px;gap:8px;padding:10px;background:${idx % 2 ? '#f9fafb' : '#fff'};border-radius:8px;font-size:0.9rem;align-items:center;`,
+      style: `display:grid;grid-template-columns:${gridCols};gap:${compact ? '4px' : '8px'};padding:${compact ? '8px' : '10px'};background:${idx % 2 ? '#f9fafb' : '#fff'};border-radius:8px;font-size:${compact ? '0.75rem' : (isMobile ? '0.8rem' : '0.9rem')};align-items:center;`,
     });
 
     const place = s.place || (idx + 1);
     const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : place + '.';
 
     row.appendChild(el('div', { style: 'text-align:center;font-weight:bold;' }, String(medal)));
-    row.appendChild(el('div', { style: 'font-weight:bold;' }, s.full_name || '—'));
-    row.appendChild(el('div', { style: 'text-align:center;font-size:0.85rem;color:#666;' }, s.group_name || '—'));
-    row.appendChild(el('div', { style: 'text-align:center;color:#22c55e;font-weight:bold;' }, String(s.present || 0)));
-    row.appendChild(el('div', { style: 'text-align:center;font-weight:bold;' }, (s.attendance_percent || 0) + '%'));
-    row.appendChild(el('div', { style: 'text-align:center;color:#4f46e5;font-weight:bold;' }, String(s.rating || 0)));
+
+    row.appendChild(el('div', {
+      style: `font-weight:bold;${isMobile ? 'font-size:0.75rem;line-height:1.2;' : ''}`,
+      title: s.full_name || '—',
+    }, s.full_name || '—'));
+
+    if (!isMobile) {
+      row.appendChild(el('div', {
+        style: 'text-align:center;font-size:0.85rem;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        title: s.group_name || '—',
+      }, s.group_name || '—'));
+    }
+
+    row.appendChild(el('div', {
+      style: `text-align:center;color:#22c55e;font-weight:bold;${isMobile ? 'font-size:0.8rem;' : ''}`,
+    }, String(s.present || 0)));
+
+    row.appendChild(el('div', {
+      style: `text-align:center;font-weight:bold;${isMobile ? 'font-size:0.8rem;' : ''}`,
+    }, (s.attendance_percent || 0) + '%'));
+
+    row.appendChild(el('div', {
+      style: `text-align:center;color:#4f46e5;font-weight:bold;${isMobile ? 'font-size:0.8rem;' : ''}`,
+    }, String(s.rating || 0)));
 
     table.appendChild(row);
   });
@@ -3415,7 +3519,7 @@ function makeCouncilRatingTable(data) {
 }
 
 // ============================================
-// 📥 ЭКСПОРТ EXCEL (настоящий .xlsx с форматированием)
+// 📥 ЭКСПОРТ EXCEL
 // ============================================
 function exportCouncilExcel(data) {
   try {
@@ -3423,7 +3527,6 @@ function exportCouncilExcel(data) {
       throw new Error('Библиотека XLSX не загружена. Проверь интернет и обнови страницу (F5).');
     }
 
-    // === ПОДГОТОВКА ДАННЫХ ===
     const rows = data.map((s, idx) => ({
       '№': s.place || (idx + 1),
       'ФИО': s.full_name || '',
@@ -3438,55 +3541,30 @@ function exportCouncilExcel(data) {
       'Рейтинг': s.rating || 0,
     }));
 
-        // === СОЗДАЁМ ЛИСТ ===
     const ws = XLSX.utils.json_to_sheet(rows);
+    const range = XLSX.utils.decode_range(ws['!ref']);
 
-    // === ОПРЕДЕЛЯЕМ ДИАПАЗОН (для циклов ниже) ===
-    const range = XLSX.utils.decode_range(ws['!ref']);  // ← ПЕРЕСТАВИЛИ СЮДА
-
-    // === АВТО-ШИРИНА КОЛОНОК ===
-    const colMaxWidths = [];
-
-    for (let C = range.s.c; C <= range.e.c; C++) {
-      let maxLen = 10;  // минимум
-      for (let R = range.s.r; R <= range.e.r; R++) {
-        const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
-        const cell = ws[cellAddr];
-        if (!cell) continue;
-
-        const value = String(cell.v || '');
-        // Эмодзи считаем как 2 символа
-        const len = value.replace(/[\u{1F300}-\u{1FAFF}]/gu, 'XX').length;
-        if (len > maxLen) maxLen = len;
-      }
-      colMaxWidths.push(maxLen + 2);  // +2 для отступа
-    }
-
-        // Фиксированные ширины — гарантия
     const colWidths = [
-      { wch: 8 },   // №
-      { wch: 45 },  // ФИО
-      { wch: 25 },  // Группа
-      { wch: 8 },   // Был
-      { wch: 10 },  // Опоздал
-      { wch: 12 },  // Пропустил
-      { wch: 10 },  // Саботаж
-      { wch: 18 },  // Посещаемость %
-      { wch: 12 },  // Домашки
-      { wch: 10 },  // Бонусы
-      { wch: 12 },  // Рейтинг
+      { wch: 8 },
+      { wch: 45 },
+      { wch: 25 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 12 },
     ];
     ws['!cols'] = colWidths;
 
-    // === НАСТРОЙКА ЯЧЕЕК (обводка, шрифт) ===
-
-      for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let R = range.s.r; R <= range.e.r; R++) {
       for (let C = range.s.c; C <= range.e.c; C++) {
         const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
         const cell = ws[cellAddr];
         if (!cell) continue;
 
-        // === БАЗОВЫЙ СТИЛЬ: обводка + шрифт ===
         cell.s = {
           border: {
             top: { style: 'thin', color: { rgb: 'E5E7EB' } },
@@ -3495,45 +3573,38 @@ function exportCouncilExcel(data) {
             right: { style: 'thin', color: { rgb: 'E5E7EB' } },
           },
           font: { name: 'Arial', sz: 11 },
-          alignment: { vertical: 'center', horizontal: 'center' },  // ← ПО ЦЕНТРУ по умолчанию
+          alignment: { vertical: 'center', horizontal: 'center' },
         };
 
-        // === 1. ЗАГОЛОВОК (строка 0): ЖИРНЫЙ + ПО ЦЕНТРУ ===
         if (R === 0) {
           cell.s.font = { name: 'Arial', sz: 12, bold: true, color: { rgb: 'FFFFFF' } };
           cell.s.fill = { fgColor: { rgb: '4F46E5' } };
           cell.s.alignment = { vertical: 'center', horizontal: 'center' };
         }
 
-        // === 2. ФИО (колонка B = 1, со строки 2): ВЛЕВО ===
         if (R > 0 && C === 1) {
           cell.s.alignment = { vertical: 'center', horizontal: 'left' };
         }
 
-        // === 3. Рейтинг (K = 10): ЖИРНЫЙ, СИНИЙ, ПО ЦЕНТРУ ===
         if (R > 0 && C === 10) {
           cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '4F46E5' } };
           cell.s.alignment = { vertical: 'center', horizontal: 'center' };
         }
 
-        // === «Был» (D = 3): ЗЕЛЁНЫЙ, ЖИРНЫЙ ===
         if (R > 0 && C === 3) {
           cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '22C55E' } };
         }
 
-        // === «Пропустил» (F = 5): КРАСНЫЙ, ЖИРНЫЙ ===
         if (R > 0 && C === 5) {
           cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: 'EF4444' } };
         }
 
-        // === «Саботаж» (G = 6): ТЁМНО-КРАСНЫЙ, ЖИРНЫЙ ===
         if (R > 0 && C === 6) {
           cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '7F1D1D' } };
         }
       }
     }
 
-    // === МЕДАЛИ В ПЕРВОМ СТОЛБЦЕ ===
     if (rows.length >= 1 && ws['A2']) {
       ws['A2'] = { t: 's', v: '🥇 1' };
     }
@@ -3544,13 +3615,9 @@ function exportCouncilExcel(data) {
       ws['A4'] = { t: 's', v: '🥉 3' };
     }
 
-    // === СОЗДАЁМ КНИГУ ===
     const wb = XLSX.utils.book_new();
-
-    // Название листа
     XLSX.utils.book_append_sheet(wb, ws, 'Рейтинг');
 
-    // === ДОБАВЛЯЕМ ЛИСТ-СПРАВКУ (инфо) ===
     const infoWs = XLSX.utils.aoa_to_sheet([
       ['🤖 КЛАСС РОБОТОТЕХНИКИ'],
       ['Рейтинг учеников — Педсовет'],
@@ -3571,7 +3638,6 @@ function exportCouncilExcel(data) {
 
     XLSX.utils.book_append_sheet(wb, infoWs, 'Справка');
 
-    // === СОХРАНЯЕМ ФАЙЛ ===
     const fileName = `Педсовет_Рейтинг_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fileName);
 
@@ -3645,7 +3711,7 @@ function exportCouncilPDF(data) {
 }
 
 // ============================================
-// 🔑 ДОСТУП ПЕДСОВЕТА (управление токеном)
+// 🔑 ДОСТУП ПЕДСОВЕТА
 // ============================================
 async function renderCouncilToken() {
   const root = document.getElementById('subtab-settings-council');
@@ -3654,7 +3720,7 @@ async function renderCouncilToken() {
 
   root.appendChild(el('p', {
     style: 'color:#666;margin-bottom:16px;line-height:1.5;',
-  }, '🔑 QR-код для входа педсовета. Распечатай и повесь в учительской — тётки сканируют и заходят без пароля.'));
+  }, '🔑 QR-код для входа педсовета. Распечатать и повесить в учительской — вход без пароля.'));
 
   try {
     const { data, error } = await supabase
@@ -3680,9 +3746,6 @@ async function renderCouncilToken() {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(councilUrl)}&color=4f46e5&bgcolor=ffffff&margin=20`;
     const logoUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'icons/logo.svg?v=210';
 
-    // ============================================
-    // 🎨 ПЕЧАТНЫЙ ШАБЛОН ДЛЯ УЧИТЕЛЬСКОЙ
-    // ============================================
     const card = el('div', {
       id: 'council-print-card',
       style: `
@@ -3697,7 +3760,6 @@ async function renderCouncilToken() {
       `,
     });
 
-    // === ШАПКА: Лого + Название ===
     const header = el('div', {
       style: `
         display: flex;
@@ -3724,7 +3786,6 @@ async function renderCouncilToken() {
 
     card.appendChild(header);
 
-    // === ЗАГОЛОВОК "QR ДЛЯ ПЕДСОВЕТА" ===
     card.appendChild(el('div', {
       style: `
         font-size:1.6rem;
@@ -3739,7 +3800,6 @@ async function renderCouncilToken() {
       style: 'font-size:1rem;color:#6b7280;margin-bottom:24px;',
     }, 'Вход в журнал посещаемости'));
 
-    // === QR-КОД ===
     const qrWrapper = el('div', {
       style: `
         background: #fff;
@@ -3760,7 +3820,6 @@ async function renderCouncilToken() {
 
     card.appendChild(qrWrapper);
 
-    // === ИНСТРУКЦИЯ ===
     card.appendChild(el('div', {
       style: `
         background: #eef2ff;
@@ -3781,10 +3840,8 @@ async function renderCouncilToken() {
       `,
     }));
 
-    
     root.appendChild(card);
 
-    // === КНОПКИ УПРАВЛЕНИЯ (не печатаются) ===
     const btnRow = el('div', {
       style: 'display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;justify-content:center;',
     });
@@ -3807,7 +3864,7 @@ async function renderCouncilToken() {
       onclick: () => window.open(councilUrl, '_blank'),
     }, '👁️ Проверить вход'));
 
-        root.appendChild(btnRow);
+    root.appendChild(btnRow);
 
   } catch (e) {
     console.error('Ошибка токена:', e);
@@ -3816,7 +3873,7 @@ async function renderCouncilToken() {
 }
 
 // ============================================
-// 🖨️ ПЕЧАТЬ QR ДЛЯ ПЕДСОВЕТА (только карточка)
+// 🖨️ ПЕЧАТЬ QR
 // ============================================
 function printCouncilQR() {
   const card = document.getElementById('council-print-card');
@@ -3824,6 +3881,29 @@ function printCouncilQR() {
     toast('Карточка не найдена', 'err');
     return;
   }
+
+  // 👇 inline SVG логотип
+  const logoHtml = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width:72px;height:72px;">
+      <g>
+        <circle cx="50" cy="50" r="40" fill="#ffffff"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
+        <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
+        <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
+        <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+        <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
+        <circle cx="40" cy="46" r="5" fill="#ffffff"/>
+        <circle cx="60" cy="46" r="5" fill="#ffffff"/>
+        <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </g>
+    </svg>
+  `;
+
+  // Заменяем <img alt="Лого"> на inline SVG
+  const cardHtml = card.outerHTML.replace(
+    /<img[^>]*alt="Лого"[^>]*>/,
+    logoHtml
+  );
 
   const win = window.open('', '_blank');
   win.document.write(`
@@ -3850,7 +3930,7 @@ function printCouncilQR() {
       </style>
     </head>
     <body>
-      ${card.outerHTML}
+      ${cardHtml}
     </body>
     </html>
   `);
@@ -3863,7 +3943,6 @@ function printCouncilQR() {
   toast('🖨️ Открываю печать...', 'ok');
 }
 
-// Создание токена педсовета
 async function createCouncilToken() {
   try {
     const token = 'pedsove-' + Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -3886,7 +3965,7 @@ async function createCouncilToken() {
 }
 
 // ============================================
-// 🖨️ ПЕЧАТЬ РАСПИСАНИЯ (только карточка)
+// 🖨️ ПЕЧАТЬ РАСПИСАНИЯ
 // ============================================
 function printSchedule() {
   const monday = new Date(currentWeekStart);
@@ -3907,7 +3986,6 @@ function printSchedule() {
   const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
   const logoUrl = baseUrl + 'icons/logo.svg?v=210';
 
-  // Собираем таблицу
   let tableHtml = `
     <table style="width:100%; border-collapse:collapse; font-family:'Segoe UI', Arial, sans-serif; font-size:11px;">
       <thead>
@@ -4041,6 +4119,13 @@ function printSchedule() {
       </style>
     </head>
     <body>
+      <div class="schedule-header">
+        <img src="${logoUrl}" alt="Лого">
+        <div class="schedule-title">
+          <h1>КЛАСС РОБОТОТЕХНИКИ</h1>
+        </div>
+      </div>
+
       <div class="schedule-subtitle">📅 РАСПИСАНИЕ НА НЕДЕЛЮ</div>
       <div class="schedule-period">${dateStr}</div>
 
@@ -4064,7 +4149,9 @@ function printSchedule() {
   toast('🖨️ Открываю печать расписания...', 'ok');
 }
 
-// Экспорт для отладки
+// ============================================
+// ЭКСПОРТ ДЛЯ ОТЛАДКИ
+// ============================================
 window.__app = {
   groupsCache,
   studentsCache,
