@@ -61,6 +61,7 @@ function switchTab(tabName) {
   if (tabName === 'communication') renderCommunicationTab();
   if (tabName === 'schedule') renderSchedule();
   if (tabName === 'attendance') renderCouncilAttendance();
+  if (tabName === 'public') renderPublicTab();
 
   closeMenu();
 }
@@ -4150,6 +4151,42 @@ function printSchedule() {
 }
 
 // ============================================
+// 🌐 ПУБЛИЧНОЕ РАСПИСАНИЕ
+// ============================================
+async function renderPublicTab() {
+  const urlBox = document.getElementById('public-url-box');
+  const openBtn = document.getElementById('public-open-btn');
+  const copyBtn = document.getElementById('public-copy-btn');
+  const qrImg = document.getElementById('public-qr-img');
+
+  if (!urlBox) return;
+
+  const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+  const publicUrl = baseUrl + 'public.html';
+
+  // Показываем ссылку
+  urlBox.textContent = publicUrl;
+
+  // QR-код
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(publicUrl)}&color=4f46e5&bgcolor=ffffff&margin=10`;
+
+  // Кнопка «Открыть»
+  openBtn.onclick = () => {
+    window.open('public.html', '_blank');
+  };
+
+  // Кнопка «Копировать»
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      toast('📋 Ссылка скопирована!', 'ok');
+    } catch (e) {
+      toast('Не удалось скопировать', 'err');
+    }
+  };
+}
+
+// ============================================
 // ЭКСПОРТ ДЛЯ ОТЛАДКИ
 // ============================================
 window.__app = {
@@ -4173,4 +4210,5 @@ window.__app = {
   exportCouncilExcel,
   exportCouncilPDF,
   printSchedule,
+  renderPublicTab,
 };

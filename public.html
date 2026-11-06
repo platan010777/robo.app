@@ -95,6 +95,9 @@
   </header>
 
   <main id="app" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+
+      <!-- Отладочный блок (появится только при ошибке) -->
+  <div id="debug-error" style="display:none; background:#fee2e2; color:#991b1b; padding:16px; margin:20px auto; max-width:1000px; border-radius:12px; font-family:monospace; white-space:pre-wrap;"></div>
     
     <!-- БЛОК ПОРТАЛА (ПЛИТКИ) -->
     <div id="portal-view">
@@ -179,5 +182,14 @@
   </main>
 
   <script type="module" src="js/public.js"></script>
+    <script>
+    window.addEventListener('error', function(e) {
+      const el = document.getElementById('debug-error');
+      if (el) {
+        el.style.display = 'block';
+        el.textContent = '⚠️ ОШИБКА: ' + (e.message || 'Неизвестная ошибка') + '\n' + (e.filename || '') + ':' + (e.lineno || '');
+      }
+    });
+  </script>
 </body>
 </html>
