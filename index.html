@@ -13,28 +13,24 @@
 <body>
   <header class="topbar">
     <div class="header-logo-container">
-    <svg class="header-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-      <g>
-        <circle cx="50" cy="50" r="40" fill="#ffffff"/>
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
-        <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
-        <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
-        <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
-        <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
-        <circle cx="40" cy="46" r="5" fill="#ffffff"/>
-        <circle cx="60" cy="46" r="5" fill="#ffffff"/>
-        <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
-      </g>
-    </svg>
-  </div>
+      <svg class="header-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g>
+          <circle cx="50" cy="50" r="40" fill="#ffffff"/>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
+          <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
+          <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
+          <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+          <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
+          <circle cx="40" cy="46" r="5" fill="#ffffff"/>
+          <circle cx="60" cy="46" r="5" fill="#ffffff"/>
+          <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
     <button id="burger-btn" class="burger-btn" aria-label="Меню">
-      <span></span>
-      <span></span>
-      <span></span>
+      <span></span><span></span><span></span>
     </button>
-    <h1>
-  КЛАСС РОБОТОТЕХНИКИ
-</h1>
+    <h1>КЛАСС РОБОТОТЕХНИКИ</h1>
     <div id="user-info"></div>
   </header>
 
@@ -43,151 +39,132 @@
 
   <!-- Боковое меню -->
   <aside id="side-menu" class="side-menu">
-  <div class="side-menu-header">
-    <svg class="side-menu-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-      <g>
-        <circle cx="50" cy="50" r="40" fill="#ffffff"/>
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
-        <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
-        <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
-        <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
-        <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
-        <circle cx="40" cy="46" r="5" fill="#ffffff"/>
-        <circle cx="60" cy="46" r="5" fill="#ffffff"/>
-        <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
-      </g>
-    </svg>
-    <span class="side-menu-title" style="font-size:0.9rem;line-height:1.2;">КЛАСС РОБОТОТЕХНИКИ</span>
-  </div>
+    <div class="side-menu-header">
+      <svg class="side-menu-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <g>
+          <circle cx="50" cy="50" r="40" fill="#ffffff"/>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
+          <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
+          <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
+          <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+          <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
+          <circle cx="40" cy="46" r="5" fill="#ffffff"/>
+          <circle cx="60" cy="46" r="5" fill="#ffffff"/>
+          <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <span class="side-menu-title" style="font-size:0.9rem;line-height:1.2;">КЛАСС РОБОТОТЕХНИКИ</span>
+    </div>
     <nav class="side-menu-nav">
-      <button data-tab="students" class="side-menu-item">
-        <span class="menu-icon">👥</span>
-        <span>Ученики</span>
+      <button data-tab="schedule" class="side-menu-item">
+        <span class="menu-icon">🗓️</span><span>Расписание</span>
       </button>
       <button data-tab="lessons" class="side-menu-item active">
-        <span class="menu-icon">📅</span>
-        <span>Занятия</span>
+        <span class="menu-icon">📅</span><span>Занятия</span>
       </button>
-      <button data-tab="schedule" class="side-menu-item">
-        <span class="menu-icon">🗓️</span>
-        <span>Расписание</span>
-      </button>
+      <button data-tab="students" class="side-menu-item">
+        <span class="menu-icon">👥</span><span>Ученики</span>
+      </button>      
       <button data-tab="attendance" class="side-menu-item">
-        <span class="menu-icon">📊</span>
-        <span>Посещаемость</span>
+        <span class="menu-icon">📊</span><span>Посещаемость</span>
       </button>
       <button data-tab="reports" class="side-menu-item">
-        <span class="menu-icon">📊</span>
-        <span>Отчёты</span>
+        <span class="menu-icon">📊</span><span>Отчёты</span>
       </button>      
       <button data-tab="communication" class="side-menu-item">
-        <span class="menu-icon">📢</span>
-        <span>Связь</span>
+        <span class="menu-icon">📢</span><span>Связь</span>
         <span class="menu-badge" id="badge-chats"></span>
       </button>
       <button data-tab="settings" class="side-menu-item">
-        <span class="menu-icon">⚙️</span>
-        <span>Настройки</span>
+        <span class="menu-icon">⚙️</span><span>Настройки</span>
+      </button>
+      <button onclick="window.open('public.html', '_blank')" class="side-menu-item" title="Открыть публичный портал">
+        <span class="menu-icon">🌐</span><span>Публичное</span>
       </button>
     </nav>
+    
     <div class="side-menu-footer">
       <div id="menu-user-info"></div>
     </div>
   </aside>
 
-    <nav class="tabs">
-      <button data-tab="schedule">🗓️ Расписание</button>
-      <button data-tab="students">👥 Ученики</button>
-      <button data-tab="lessons" class="active">📅 Занятия</button>
-      <button data-tab="attendance" style="display:none;">📊 Посещаемость</button>
-      <button data-tab="reports">📊 Отчёты</button>
-      <button data-tab="communication">📢 Связь</button>
-      <button data-tab="settings">⚙️ Настройки</button>
-    </nav>
+  <nav class="tabs">
+    <button data-tab="schedule">🗓️ Расписание</button>
+    <button data-tab="students">👥 Ученики</button>
+    <button data-tab="lessons" class="active">📅 Занятия</button>
+    <button data-tab="attendance" style="display:none;">📊 Посещаемость</button>
+    <button data-tab="reports">📊 Отчёты</button>
+    <button data-tab="communication">📢 Связь</button>
+    <button data-tab="settings">⚙️ Настройки</button>
+    <button onclick="window.open('public.html', '_blank')" title="Открыть публичный портал">🌐 Публичное</button>
+  </nav>
 
-     <main id="app">
-    <section id="tab-schedule" class="tab">
-      <h2>🗓️ Расписание на неделю</h2>
-      <p>Скоро тут будет расписание...</p>
-    </section>
+  <main id="app">
+    <!-- Вкладка: Расписание -->
+    <section id="tab-schedule" class="tab"></section>
 
+    <!-- Вкладка: Занятия -->
     <section id="tab-lessons" class="tab active">
       <h2>📅 Занятия</h2>
-
-      <!-- ПОДВКЛАДКИ -->
       <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
         <button data-subtab="lessons-journal" class="subtab-btn">📋 Журнал</button>
         <button data-subtab="lessons-homework" class="subtab-btn">📚 Домашки</button>
       </div>
-      <!-- ПОДСЕКЦИЯ: Список занятий (главный экран) -->
       <div id="subtab-lessons-list" class="subtab-content active"></div>
-      <!-- ПОДСЕКЦИЯ: Журнал -->
       <div id="subtab-lessons-journal" class="subtab-content"></div>
-      <!-- ПОДСЕКЦИЯ: Домашки -->
       <div id="subtab-lessons-homework" class="subtab-content"></div>
     </section>
 
-    <section id="tab-requests" class="tab">
-      <h2>📨 Заявки от учеников</h2>
-    </section>
+    <!-- Вкладка: Заявки (скрыта) -->
+    <section id="tab-requests" class="tab"></section>
 
+    <!-- Вкладка: Ученики -->
     <section id="tab-students" class="tab">
       <h2>👥 Ученики</h2>
-  
-      <!-- ПОДВКЛАДКИ -->
-          <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
-            <button data-subtab="students-requests" class="subtab-btn active">📨 Заявки <span id="subtab-requests-badge" class="subtab-badge" style="display:none;"></span></button>
-            <button data-subtab="students-list" class="subtab-btn">👥 Список</button>
-         </div>  
-      <!-- ПОДСЕКЦИЯ: Заявки (активна по умолчанию) -->
-          <div id="subtab-students-requests" class="subtab-content active"></div>  
-      <!-- ПОДСЕКЦИЯ: Список -->
-          <div id="subtab-students-list" class="subtab-content"></div>  
+      <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+        <button data-subtab="students-requests" class="subtab-btn active">📨 Заявки <span id="subtab-requests-badge" class="subtab-badge" style="display:none;"></span></button>
+        <button data-subtab="students-list" class="subtab-btn">👥 Список</button>
+      </div>  
+      <div id="subtab-students-requests" class="subtab-content active"></div>  
+      <div id="subtab-students-list" class="subtab-content"></div>  
     </section>
 
+    <!-- Вкладка: Посещаемость -->
     <section id="tab-attendance" class="tab">
       <h2>📊 Посещаемость</h2>
       <div id="council-attendance-content"></div>
     </section>
 
+    <!-- Вкладка: Отчёты -->
     <section id="tab-reports" class="tab">
       <h2>📊 Отчёты</h2>
     </section>
 
+    <!-- Вкладка: Настройки -->
     <section id="tab-settings" class="tab">
       <h2>⚙️ Настройки</h2>
-
-      <!-- ПОДВКЛАДКИ -->
       <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
         <button data-subtab="settings-qr" class="subtab-btn">📱 QR-групп</button>
         <button data-subtab="settings-passes" class="subtab-btn">🎫 Пропуска</button>
         <button data-subtab="settings-cleanup" class="subtab-btn">🧹 Очистка БД</button>
         <button data-subtab="settings-council" class="subtab-btn">🔑 Доступ педсовета</button>
       </div>
-      <!-- ПОДСЕКЦИЯ: Группы (главный экран, без подвкладки) -->
       <div id="subtab-settings-groups" class="subtab-content active"></div>
-      <!-- ПОДСЕКЦИЯ: QR-групп -->
       <div id="subtab-settings-qr" class="subtab-content"></div>
-      <!-- ПОДСЕКЦИЯ: Пропуска -->
       <div id="subtab-settings-passes" class="subtab-content"></div>
-      <!-- ПОДСЕКЦИЯ: Очистка БД -->
       <div id="subtab-settings-cleanup" class="subtab-content"></div>
-      <!-- ПОДСЕКЦИЯ: Доступ педсовета -->
       <div id="subtab-settings-council" class="subtab-content"></div>
     </section>
 
+    <!-- Вкладка: Связь -->
     <section id="tab-communication" class="tab">
       <h2>📢 Связь</h2>
-  
-      <!-- ПОДВКЛАДКИ -->
-    <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
-      <button data-subtab="comm-announcements" class="subtab-btn active">📢 Объявления</button>
-      <button data-subtab="comm-chats" class="subtab-btn">💬 Чаты <span id="subtab-chats-badge" class="subtab-badge" style="display:none;"></span></button>
-    </div>  
-      <!-- ПОДСЕКЦИЯ: Объявления -->
-    <div id="subtab-comm-announcements" class="subtab-content active"></div>  
-      <!-- ПОДСЕКЦИЯ: Чаты -->
-    <div id="subtab-comm-chats" class="subtab-content"></div>
+      <div class="subtabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+        <button data-subtab="comm-announcements" class="subtab-btn active">📢 Объявления</button>
+        <button data-subtab="comm-chats" class="subtab-btn">💬 Чаты <span id="subtab-chats-badge" class="subtab-badge" style="display:none;"></span></button>
+      </div>  
+      <div id="subtab-comm-announcements" class="subtab-content active"></div>  
+      <div id="subtab-comm-chats" class="subtab-content"></div>
     </section>
   </main>
 
