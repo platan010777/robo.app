@@ -7,8 +7,64 @@
   <title>📅 Расписание — КЛАСС РОБОТОТЕХНИКИ</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='100' height='100'%3E%3Cg%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='%232d3748' stroke-width='4'/%3E%3Cpath d='M 50 5 A 45 45 0 0 1 89 72.5' fill='none' stroke='%2322c55e' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M 89 72.5 A 45 45 0 0 1 11 72.5' fill='none' stroke='%233b82f6' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M 11 72.5 A 45 45 0 0 1 50 5' fill='none' stroke='%23ef4444' stroke-width='10' stroke-linecap='round'/%3E%3Crect x='25' y='35' width='50' height='25' rx='8' fill='%232d3748'/%3E%3Ccircle cx='38' cy='47' r='5' fill='%23ffffff'/%3E%3Ccircle cx='62' cy='47' r='5' fill='%23ffffff'/%3E%3Cpath d='M 38 67 Q 50 77 62 67' stroke='%232d3748' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E">
-</head>
+  
+  <!-- Библиотека для Excel -->
+  <script src="js/lib/xlsx.bundle.js"></script>
+
+  <style>
+    @media print {
+      /* Альбомная ориентация */
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+
+      /* Скрываем шапку сайта, кнопки и навигацию */
+      .topbar, .no-print, #schedule-container > div:first-child { 
+        display: none !important; 
+      }
+
+      /* Показываем шапку для печати */
+      #print-header { 
+        display: block !important; 
+      }
+      
+      /* Убираем отступы и фон */
+      body { 
+        background: #fff !important; 
+        padding: 0 !important; 
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      #app { 
+        padding: 0 !important; 
+        max-width: 100% !important; 
+      }
+      
+      /* Убираем тень у таблицы */
+      #schedule-container > div:last-child { 
+        box-shadow: none !important; 
+        border-radius: 0 !important;
+      }
+      
+      /* Отключаем горизонтальный скролл */
+      .overflow-x-auto { 
+        overflow: visible !important; 
+      }
+
+      /* Уменьшаем шрифт */
+      * { 
+        font-size: 10px !important; 
+      }
+      th, td, div { 
+        padding: 4px !important; 
+      }
+    }
+  </style>
+  </head>
 <body>
+  <!-- ШАПКА (как на учительской странице) -->
   <header class="topbar" style="
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -18,23 +74,26 @@
   ">
     <!-- ЛЕВО: Логотип -->
     <div style="display:flex;justify-content:flex-start;">
-    <div class="header-logo-container">
-      <svg class="header-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-        <g>
-          <circle cx="50" cy="50" r="40" fill="#ffffff"/>
-          <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
-          <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
-          <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
-          <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
-          <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
-          <circle cx="40" cy="46" r="5" fill="#ffffff"/>
-          <circle cx="60" cy="46" r="5" fill="#ffffff"/>
-          <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
-        </g>
-      </svg>
+      <div class="header-logo-container" style="width:64px;height:64px;flex-shrink:0;">
+        <a href="public.html" title="Назад в портал">
+          <svg class="header-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <g>
+              <circle cx="50" cy="50" r="40" fill="#ffffff"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
+              <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
+              <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
+              <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+              <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
+              <circle cx="40" cy="46" r="5" fill="#ffffff"/>
+              <circle cx="60" cy="46" r="5" fill="#ffffff"/>
+              <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </a>
+      </div>
     </div>
 
-    <!-- ЦЕНТР: Заголовки -->
+    <!-- ЦЕНТР: Заголовок -->
     <div style="text-align:center;">
       <div style="font-size:1.5rem;font-weight:bold;line-height:1.1;white-space:nowrap;">
         КЛАСС РОБОТОТЕХНИКИ
@@ -44,17 +103,51 @@
       </div>
     </div>
 
-    <!-- ПРАВО: Подпись -->
-    <div style="display:flex;justify-content:flex-end;font-size:0.75rem;opacity:0.85;text-align:right;">
-      Открытый доступ · без регистрации
+    <!-- ПРАВО: Кнопка "В портал" (тут же, где юзер в учительской) -->
+    <div style="display:flex;justify-content:flex-end;align-items:center;">
+      <a href="public.html" style="background:#fff; color:#4f46e5; padding:10px 20px; border:none; border-radius:10px; cursor:pointer; font-size:0.95rem; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,.1); text-decoration:none;">
+        ← В портал
+      </a>
     </div>
   </header>
-  
-  <main id="app" style="max-width:1400px;margin:0 auto;padding:16px;">
-    <div id="schedule-container" style="min-height:400px;">
-      <p style="color:#9ca3af;text-align:center;padding:40px;">⏳ Загружаю расписание...</p>
+
+  <main id="app" style="max-width: 1400px; margin: 0 auto; padding: 16px;">
+
+        <!-- ШАПКА ДЛЯ ПЕЧАТИ (видна только при печати) -->
+    <div id="print-header" style="display: none;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 20px; border-bottom: 2px dashed #c7d2fe; margin-bottom: 20px;">
+        <!-- Логотип SVG -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: 64px; height: 64px;">
+          <g>
+            <circle cx="50" cy="50" r="40" fill="#ffffff"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#2d3748" stroke-width="4"/>
+            <path d="M 50 10 A 40 40 0 0 1 84.6 70" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>
+            <path d="M 84.6 70 A 40 40 0 0 1 15.4 70" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
+            <path d="M 15.4 70 A 40 40 0 0 1 50 10" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round"/>
+            <rect x="28" y="36" width="44" height="20" rx="8" fill="#2d3748"/>
+            <circle cx="40" cy="46" r="5" fill="#ffffff"/>
+            <circle cx="60" cy="46" r="5" fill="#ffffff"/>
+            <path d="M 38 66 Q 50 76 62 66" stroke="#2d3748" stroke-width="4" fill="none" stroke-linecap="round"/>
+          </g>
+        </svg>
+        
+        <!-- Текст -->
+        <div style="text-align: left;">
+          <div style="font-size: 1.8rem; font-weight: bold; color: #4f46e5; line-height: 1.1; letter-spacing: 0.5px;">
+            КЛАСС РОБОТОТЕХНИКИ
+          </div>
+          <div style="font-size: 1.1rem; color: #6b7280; margin-top: 4px; letter-spacing: 1px; font-weight: 600;">
+           РАСПИСАНИЕ ЗАНЯТИЙ
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="schedule-container" style="min-height: 400px;">
+      <p style="color: #9ca3af; text-align: center; padding: 40px;">⏳ Загружаю расписание...</p>
     </div>
   </main>
-  <script type="module" src="js/public.js"></script>
+
+  <script type="module" src="js/public-schedule.js"></script>
 </body>
 </html>

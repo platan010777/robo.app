@@ -9,6 +9,7 @@ function el(tag, attrs = {}, ...children) {
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'onclick') e.onclick = v;
     else if (k === 'style') e.style.cssText = v;
+    else if (k === 'class') e.className = v;
     else e.setAttribute(k, v);
   }
   for (const child of children) {
@@ -44,6 +45,7 @@ async function loadAll() {
     lessonsCache = lessons || [];
   } catch (e) {
     console.error('Ошибка загрузки:', e);
+    document.getElementById('schedule-container').innerHTML = `<p style="color:#ef4444;text-align:center;padding:40px;">Ошибка загрузки: ${e.message}</p>`;
   }
 }
 
@@ -59,6 +61,7 @@ async function renderSchedule() {
     style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;',
   });
 
+  // Кнопка "Прошлая"
   header.appendChild(el('button', {
     style: 'background:#4f46e5;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
     onclick: () => {
@@ -75,6 +78,7 @@ async function renderSchedule() {
     style: 'font-weight:bold;font-size:1.1rem;color:#4f46e5;text-align:center;flex:1;',
   }, `📅 ${dateStr}`));
 
+  // Кнопка "Следующая"
   header.appendChild(el('button', {
     style: 'background:#4f46e5;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
     onclick: () => {
@@ -83,10 +87,25 @@ async function renderSchedule() {
     },
   }, 'Следующая →'));
 
+  // Кнопка "Печать"
+  header.appendChild(el('button', {
+    style: 'background:#22c55e;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
+    class: 'no-print',
+    onclick: () => window.print(),
+  }, '🖨️ Распечатать'));
+
+  // Кнопка "Excel"
+  header.appendChild(el('button', {
+    style: 'background:#16a34a;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;font-weight:bold;',
+    class: 'no-print',
+    onclick: () => downloadExcel(),
+  }, '📥 Excel'));
+
+  // Кнопка "На текущую" (появляется, если неделя не текущая)
   const mondayThisWeek = getMondayOfWeek(new Date());
   if (currentWeekStart.getTime() !== mondayThisWeek.getTime()) {
     header.appendChild(el('button', {
-      style: 'background:#22c55e;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
+      style: 'background:#f59e0b;color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;',
       onclick: () => {
         currentWeekStart = getMondayOfWeek(new Date());
         renderSchedule();
@@ -109,6 +128,7 @@ async function renderSchedule() {
 
   const table = el('div', {
     style: 'overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);',
+    class: 'overflow-x-auto'
   });
 
   const headerRow = el('div', {
@@ -173,8 +193,107 @@ async function renderSchedule() {
 }
 
 // ============================================
-// СТАРТ
+// ФУНКЦИЯ ЭКСПОРТА В EXCEL (XLSX) СО СТИЛЯМИ
 // ============================================
+function downloadExcel() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      alert('Библиотека Excel не загружена. Проверь файл xlsx.bundle.js');
+      return;
+    }
+
+    const days = [
+      { name: 'Пн', offset: 0 },
+      { name: 'Вт', offset: 1 },
+      { name: 'Ср', offset: 2 },
+      { name: 'Чт', offset: 3 },
+      { name: 'Пт', offset: 4 },
+    ];
+
+    const rows = [];
+    groupsCache.forEach(group => {
+      const row = { 'Группа': group.name };
+      days.forEach(day => {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + day.offset);
+        const dateStr = formatLocalDate(d);
+        
+        const dayLessons = lessonsCache.filter(l => l.group_id === group.id && l.date === dateStr);
+        const text = dayLessons.map(l => l.topic || '—').join('\n');
+        
+        row[`${day.name} ${d.getDate()}`] = text;
+      });
+      rows.push(row);
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    ws['!cols'] = [
+      { wch: 25 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 },
+    ];
+
+    ws['!rows'] = [];
+    for (let i = 0; i <= groupsCache.length; i++) {
+      ws['!rows'].push({ hpt: 40 });
+    }
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cellAddress]) continue;
+        
+        const cell = ws[cellAddress];
+        
+        cell.s = {
+          font: { name: 'Arial', sz: 11 },
+          alignment: { vertical: 'center', horizontal: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+            bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+            left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+            right: { style: 'thin', color: { rgb: 'E5E7EB' } },
+          },
+        };
+
+        if (R === 0) {
+          cell.s.font = { name: 'Arial', sz: 12, bold: true, color: { rgb: 'FFFFFF' } };
+          cell.s.fill = { fgColor: { rgb: '4F46E5' } };
+          cell.s.alignment = { vertical: 'center', horizontal: 'center' };
+          cell.s.border = {
+            top: { style: 'medium', color: { rgb: '3730A3' } },
+            bottom: { style: 'medium', color: { rgb: '3730A3' } },
+            left: { style: 'medium', color: { rgb: '3730A3' } },
+            right: { style: 'medium', color: { rgb: '3730A3' } },
+          };
+        }
+
+        if (R > 0 && C === 0) {
+          cell.s.font = { name: 'Arial', sz: 11, bold: true, color: { rgb: '1F2937' } };
+          cell.s.fill = { fgColor: { rgb: 'F3F4F6' } };
+          cell.s.alignment = { vertical: 'center', horizontal: 'left' };
+        }
+
+        if (R > 0 && R % 2 === 0) {
+          if (!cell.s.fill) {
+            cell.s.fill = { fgColor: { rgb: 'F9FAFB' } };
+          }
+        }
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Расписание');
+
+    const fileName = `Расписание_${formatLocalDate(currentWeekStart)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+  } catch (e) {
+    console.error('Ошибка Excel:', e);
+    alert('Не удалось сохранить Excel: ' + e.message);
+  }
+}
+
 (async () => {
   await loadAll();
   await renderSchedule();

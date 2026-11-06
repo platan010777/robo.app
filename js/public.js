@@ -284,20 +284,11 @@ async function renderSchedule() {
     }
   });
 
-  // Кнопка "Перейти к расписанию"
+  // Кнопка "Перейти к расписанию" -> открываем отдельную страницу
   goBtn.addEventListener('click', () => {
-    document.getElementById('portal-view').style.display = 'none';
-    document.getElementById('schedule-view').style.display = 'block';
-    
-    document.getElementById('header-subtitle').innerText = 'Расписание занятий';
-    document.getElementById('back-to-portal').style.display = 'block';
-    document.getElementById('header-info').style.display = 'none';
-    
-    if (!document.getElementById('schedule-content').hasChildNodes()) {
-      renderSchedule();
-    }
+    window.location.href = 'schedule-public.html';
   });
-
+  
   // Возврат в портал
   document.getElementById('back-to-portal').addEventListener('click', () => {
     document.getElementById('portal-view').style.display = 'block';
